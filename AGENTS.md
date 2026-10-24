@@ -2,9 +2,10 @@
 
 ## Purpose
 
-This repo defines the contracts for every other repository in `linuxserver-playground` and will hold the
-manifest renderer. Changes here affect every image repo, the workflows, the ci harness, the hub and the
-control plane. Treat a schema change as an API change.
+This repo defines the contracts for every other repository in `linuxserver-playground` and holds the `builder`
+command line tool that validates image repositories, renders their generated files and migrates legacy
+manifests. Changes here affect every image repo, the workflows, the ci harness, the hub and the control plane.
+Treat a schema change as an API change and a template change as a change to every README in the fleet.
 
 ## Layout
 
@@ -13,9 +14,12 @@ control plane. Treat a schema change as an API change.
 | `CONVENTIONS.md` | The written contract. Read it first. |
 | `schemas/*.json` | JSON Schema 2020-12. `$id` is the canonical URL; cross-references use bare filenames. |
 | `contracts/` | Validator package and `python -m contracts` CLI. |
+| `builder/` | The `builder` CLI: `cli.py` (argparse), `manifest.py` (loading with line numbers, validation, the render context), `render.py`, `check.py`, `snippets.py` (compose/run builders the hub imports), `admonition.py`, `migrate.py` + `legacy_vars.py` (readme-vars/jenkins-vars conversion). |
+| `builder/templates/` | Jinja templates for `README.md`, the mkdocs page, `README.lite.md`, the build workflow; `parts/` holds the README sections ported from the legacy snippets. `LICENSE` is copied verbatim. |
 | `templates/agents/` | AGENTS.md templates rendered into image repos and mod branches. |
-| `examples/` | Converted manifests; tests keep them valid. Add one when a schema gains a feature. |
-| `tests/` | pytest. |
+| `examples/` | Converted manifests; tests keep them valid and rendering. Add one when a schema gains a feature. |
+| `tests/` | pytest. `tests/golden/` are snapshot renders of the sonarr example; `tests/fixtures/live/` are real readme-vars/jenkins-vars pairs used by the migration tests. |
+| `Dockerfile`, `Dockerfile.aarch64`, `entrypoint.sh` | The internal tool image (`ghcr.io/linuxserver-playground/builder`). |
 
 ## What you may edit
 
@@ -23,21 +27,27 @@ Everything, by pull request. A schema change needs: the schema, an example exerc
 in `CONVENTIONS.md` if behaviour changes, and a `contracts_version` bump in `pyproject.toml` (MINOR for
 additive, MAJOR for breaking; MAJOR also changes each schema's `schema` const).
 
+A template change changes every generated README in the fleet; regenerate the goldens with
+`UPDATE_GOLDEN=1 pytest tests/test_render.py` and review the diff of `tests/golden/` before committing.
+Keep wording from the legacy snippets where it is still true.
+
 ## How to validate
 
 ```bash
 pip install -e '.[dev]'
-ruff check . && ruff format --check . && mypy contracts tests && pytest
+ruff check . && ruff format --check . && mypy && pytest
 python -m contracts image examples/*/image.yml
+builder render examples/sonarr   # writes into the example dir; do not commit the output
+docker build -t builder:local . && docker run --rm -v "$PWD/examples/sonarr":/repo builder:local check
 ```
 
 ## Contracts
 
 Produces all five schemas. Consumers: `workflows` (bundle, control-event, image), `ci` (test-report),
-`hub` (image, mod, bundle, test-report), `control` (control-event), every `docker-*` repo (image),
-`docker-mods` (mod).
+`hub` (image, mod, bundle, test-report, and `builder.snippets`), `control` (control-event), every `docker-*`
+repo (image, through `builder check` in its build), `docker-mods` (mod).
 
 ## Pull request rules
 
 Disclose AI use. One change per PR. Commit subjects are short imperative sentences without prefixes,
-emoji or trailers. Do not commit generated output or credentials.
+emoji or trailers. Do not commit generated output (`.builder-out/`, rendered example files) or credentials.
