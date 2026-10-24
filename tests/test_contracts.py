@@ -62,9 +62,13 @@ def test_port_pattern_allows_udp_suffix_only() -> None:
     assert errors("image", data)
 
 
-def test_env_names_are_upper_snake() -> None:
+def test_env_names_are_identifiers() -> None:
     data = _sonarr()
-    data["runtime"]["env"] = [{"name": "lowercase", "description": "x"}]
+    data["runtime"]["env"] = [{"name": "JELLYFIN_PublishedServerUrl", "description": "mixed case is real"}]
+    validate("image", data)
+    data["runtime"]["env"] = [{"name": "WITH-DASH", "description": "x"}]
+    assert errors("image", data)
+    data["runtime"]["env"] = [{"name": "1LEADING_DIGIT", "description": "x"}]
     assert errors("image", data)
 
 

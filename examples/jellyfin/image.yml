@@ -1,0 +1,78 @@
+# Example manifest converted from linuxserver/docker-jellyfin (master) with `builder migrate`, then tidied.
+# Exercises a deb_packages version source, a command notes source and a mixed-case environment variable name.
+schema: 1
+name: jellyfin
+title: Jellyfin
+summary: |
+  [Jellyfin](https://github.com/jellyfin/jellyfin) is a Free Software Media System that puts you in control of
+  managing and streaming your media. It is an alternative to the proprietary Emby and Plex, to provide media from a
+  dedicated server to end-user devices via multiple apps.
+
+upstream:
+  url: https://github.com/jellyfin/jellyfin
+  version:
+    type: deb_packages
+    index_url: https://repo.jellyfin.org/ubuntu/dists/resolute/main/binary-amd64/Packages
+    package: jellyfin-server
+  notes:
+    type: command
+    run: >-
+      curl -H "Authorization: token ${GITHUB_TOKEN}" -s
+      "https://api.github.com/repos/jellyfin/jellyfin/releases/tags/v${VERSION%%+ubu*}" | jq -r '. |.body'
+  sponsor:
+    - { name: Jellyfin, url: https://opencollective.com/jellyfin }
+
+release:
+  branch: master
+  tag: latest
+  channel: stable
+  tags:
+    - { tag: latest, description: Stable Jellyfin releases }
+    - { tag: nightly, description: Nightly Jellyfin releases }
+
+build:
+  base: ubuntu
+  version_arg: JELLYFIN_RELEASE
+  platforms: [amd64, arm64]
+
+test:
+  startup_timeout: 300
+  web:
+    port: 8096
+
+runtime:
+  ports:
+    - { internal: "8096", description: Http webUI., name: WebUI }
+    - { internal: "8920", description: Optional - Https webUI (you need to set up your own certificate)., optional: true }
+    - { internal: 7359/udp, description: Optional - Allows clients to discover Jellyfin on the local network., optional: true }
+    - { internal: 1900/udp, description: Optional - Service discovery used by DNLA and clients., optional: true }
+  volumes:
+    - { path: /config, host_path: /path/to/jellyfin/library, description: "Jellyfin data storage location. *This can grow very large, 50gb+ is likely for a large collection.*" }
+    - { path: /data/tvshows, host_path: /path/to/tvseries, description: "Media goes here. Add as many as needed e.g. `/data/movies`, `/data/tv`, etc." }
+    - { path: /data/movies, host_path: /path/to/movies, description: "Media goes here. Add as many as needed e.g. `/data/movies`, `/data/tv`, etc." }
+  env:
+    - { name: JELLYFIN_PublishedServerUrl, value: http://192.168.0.5, optional: true, description: "Set the autodiscovery response domain or IP address, include http(s)://." }
+  devices:
+    - { path: /dev/dri, description: Only needed if you want to use your Intel or AMD GPU for hardware accelerated video encoding (vaapi)., optional: true }
+
+docs:
+  categories: [Media Servers, Music, Audiobooks]
+  logo: https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/jellyfin-logo.png
+  setup: |
+    Webui can be found at `http://<your-ip>:8096`
+
+    More information can be found on the official documentation [here](https://jellyfin.org/docs/general/quick-start.html).
+  optional_parameters: |
+    The [official documentation for ports](https://jellyfin.org/docs/general/networking/index.html) has additional ports that can provide auto discovery.
+  notices:
+    hwaccel: true
+
+proxy:
+  port: 8096
+  subdomain: true
+  subfolder:
+    supported: true
+    base_url_note: Dashboard → Networking → Base URL, set to /jellyfin
+
+changelog:
+  - { date: 2026-10-01, text: Example entry; the live changelog lives in the real repository. }

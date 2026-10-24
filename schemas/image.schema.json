@@ -322,7 +322,7 @@
             "additionalProperties": false,
             "required": ["name", "description"],
             "properties": {
-              "name": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+              "name": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$", "description": "Environment variable name. Usually UPPER_SNAKE; mixed case is allowed because some applications require it (JELLYFIN_PublishedServerUrl)." },
               "value": { "type": "string", "default": "", "description": "Example or default value." },
               "description": { "type": "string" },
               "title": { "type": "string", "description": "Human label for store UIs." },
