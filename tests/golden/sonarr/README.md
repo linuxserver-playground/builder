@@ -27,7 +27,7 @@ Find us at:
 
 [![GitHub Release](https://img.shields.io/github/release/linuxserver-playground/docker-sonarr.svg?color=94398d&labelColor=555555&logoColor=ffffff&style=for-the-badge&logo=github)](https://github.com/linuxserver-playground/docker-sonarr/releases)
 [![GitHub Package Repository](https://img.shields.io/static/v1.svg?color=94398d&labelColor=555555&logoColor=ffffff&style=for-the-badge&label=linuxserver.io&message=GitHub%20Package&logo=github)](https://github.com/linuxserver-playground/docker-sonarr/packages)
-[![Docs](https://img.shields.io/static/v1.svg?color=94398d&labelColor=555555&logoColor=ffffff&style=for-the-badge&label=linuxserver.io&message=Docs&logo=materialformkdocs)](https://docs.linuxserver.io/images/docker-sonarr)
+[![Docs](https://img.shields.io/static/v1.svg?color=94398d&labelColor=555555&logoColor=ffffff&style=for-the-badge&label=linuxserver.io&message=Docs&logo=materialformkdocs)](https://linuxserver-playground.github.io/docs/images/docker-sonarr)
 [![CI](https://ci.thelamer.duckdns.org:8443/badge/sonarr/latest.svg)](https://ci.thelamer.duckdns.org:8443/images/sonarr/latest)
 
 [Sonarr](https://sonarr.tv/) (formerly NZBdrone) is a PVR for usenet and bittorrent users. It can monitor
@@ -77,11 +77,11 @@ The folks over at servarr.com wrote a good [write-up](https://wiki.servarr.com/d
 
 ## Read-Only Operation
 
-This image can be run with a read-only container filesystem. For details please [read the docs](https://docs.linuxserver.io/misc/read-only/).
+This image can be run with a read-only container filesystem. For details please [read the docs](https://linuxserver-playground.github.io/docs/misc/read-only/).
 
 ## Non-Root Operation
 
-This image can be run with a non-root user. For details please [read the docs](https://docs.linuxserver.io/misc/non-root/).
+This image can be run with a non-root user. For details please [read the docs](https://linuxserver-playground.github.io/docs/misc/non-root/).
 
 ## Usage
 
@@ -90,7 +90,7 @@ To help you get started creating a container from this image you can either use 
 > [!NOTE]
 > Unless a parameter is flagged as 'optional', it is *mandatory* and a value must be provided.
 
-### docker-compose (recommended, [click here for more info](https://docs.linuxserver.io/general/docker-compose))
+### docker-compose (recommended, [click here for more info](https://linuxserver-playground.github.io/docs/general/docker-compose))
 
 ```yaml
 ---
@@ -140,8 +140,8 @@ Containers are configured using parameters passed at runtime (such as those abov
 | `-v /config` | Database and sonarr configs |
 | `-v /tv` | Location of TV library on disk (See note in Application setup) |
 | `-v /downloads` | Location of download managers output directory (See note in Application setup) |
-| `--read-only=true` | Run container with a read-only filesystem. Please [read the docs](https://docs.linuxserver.io/misc/read-only/). |
-| `--user=1000:1000` | Run container with a non-root user. Please [read the docs](https://docs.linuxserver.io/misc/non-root/). |
+| `--read-only=true` | Run container with a read-only filesystem. Please [read the docs](https://linuxserver-playground.github.io/docs/misc/read-only/). |
+| `--user=1000:1000` | Run container with a non-root user. Please [read the docs](https://linuxserver-playground.github.io/docs/misc/non-root/). |
 
 ## Environment variables from files (Docker secrets)
 

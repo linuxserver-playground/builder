@@ -41,7 +41,7 @@ class Settings:
     org: str = "linuxserver-playground"
     registry: str = "ghcr.io"
     control_url: str = "https://ci.thelamer.duckdns.org:8443"
-    docs_url: str = "https://docs.linuxserver.io"
+    docs_url: str = "https://linuxserver-playground.github.io/docs"
     hub_url: str = "https://linuxserver-playground.github.io/hub"
     blog_url: str = "https://blog.linuxserver.io"
     upstream_org: str = "linuxserver"
