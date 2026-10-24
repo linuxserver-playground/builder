@@ -113,6 +113,9 @@ def check_s6_scripts(repo_dir: Path) -> list[Finding]:
         rel = str(path.relative_to(repo_dir))
         if not path.stat().st_mode & stat.S_IXUSR:
             findings.append(_error(rel, "mode", "not executable"))
+        if path.name == "check":
+            # s6-notifyoncheck readiness probes are plain scripts (often #!/bin/bash); only the bit matters.
+            continue
         lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
         for index, expected in enumerate(S6_HEADER):
             actual = lines[index] if index < len(lines) else ""
