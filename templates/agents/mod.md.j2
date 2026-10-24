@@ -30,5 +30,9 @@ extracted over `/` when a container starts with `DOCKER_MODS=` set.
 
 ```bash
 docker build -t mod:test .
-docker run --rm -e DOCKER_MODS=mod:test -e PUID=1000 -e PGID=1000 ghcr.io/linuxserver/{{ target if target != 'universal' else 'baseimage-alpine' }}:latest
+# DOCKER_MODS= only resolves registry images, so a local build is sideloaded as a tar of its single layer:
+docker create --name mod-test mod:test true && mkdir -p /tmp/mods && docker export mod-test > /tmp/mods/{{ target }}-{{ name }}.tar && docker rm mod-test
+docker run --rm -e DOCKER_MODS_SIDELOAD=true -v /tmp/mods:/mods -e PUID=1000 -e PGID=1000 ghcr.io/linuxserver/{{ target if target != 'universal' else 'baseimage-alpine' }}:latest
 ```
+
+`tools/test-mod.sh` on the `master` branch of docker-mods automates this.
