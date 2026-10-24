@@ -3,7 +3,7 @@ name = "lsio-builder"
 version = "0.1.0"
 description = "LinuxServer v2 contracts (schemas and validator) and the image manifest renderer."
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 license = "GPL-3.0-only"
 dependencies = [
   "jinja2==3.1.6",
