@@ -109,6 +109,8 @@ def test_workflow_is_the_fixed_text() -> None:
     # The shared workflow asks for write tokens; the caller must grant them or GitHub refuses to start.
     assert "      packages: write\n" in workflow
     assert "repository_dispatch:" in workflow
+    # Closed pull requests reach the shared workflow too: its cleanup job deletes the untrusted-pr images.
+    assert "  pull_request:\n    types: [opened, synchronize, reopened, closed]\n" in workflow
 
 
 def test_agents_md_context() -> None:
