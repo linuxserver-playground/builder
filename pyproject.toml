@@ -36,7 +36,7 @@ build-backend = "setuptools.build_meta"
 packages = ["contracts", "builder"]
 
 [tool.setuptools.package-data]
-contracts = ["../schemas/*.json", "../templates/agents/*"]
+contracts = ["py.typed", "../schemas/*.json", "../templates/agents/*"]
 builder = ["templates/*", "templates/**/*"]
 
 [tool.ruff]
