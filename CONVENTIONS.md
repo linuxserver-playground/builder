@@ -186,14 +186,25 @@ at the end of every run, authenticated with an HMAC over the body using a per-or
 (`CONTROL_EVENTS_SECRET`), because GitHub's events do not carry the image, tag and test results.
 Shape: `schemas/control-event.schema.json`.
 
-### Control plane routes other repos link to
+### Who renders what
 
-| Route | Purpose |
-| --- | --- |
-| `/builds/{owner}/{repo}/{run_id}` | One build: record, test reports, links. `test.report_url` in the bundle and the CI section of release notes point here. |
-| `/images/{name}` and `/images/{name}/{tag}` | Fleet-board drill-down for one image or one release tag; README badges link here. |
-| `/badge/{name}/{tag}.svg` | CI status badge for the latest live build with that release tag. |
-| `/events` | Signed `build.started` / `build.summary` intake (above). |
+The control plane runs on modest hardware and is public. It shows live build status, the fleet board,
+queue, scheduler decisions and maintainer actions, and nothing else. Everything derived from a release
+(test reports, screenshots, logs, package and file data, diffs, store templates, docs) is rendered by the
+hub into static files on GitHub Pages, from the Release assets. Links in release notes, Discord messages
+and READMEs point at the hub for results and at the control plane for live status.
+
+| Route | Owner | Purpose |
+| --- | --- | --- |
+| `{HUB_URL}/builds/{image}/{tag}/` | hub | The CI results page of one live build: per-arch test table, report, screenshot, logs, diff summary. `test.report_url` in the bundle and the CI section of release notes point here. |
+| `{HUB_URL}/builds/{image}/` | hub | Build history of one image. |
+| `{HUB_URL}/stores/...`, `{HUB_URL}/api/v1/...` | hub | Store templates and the static API. |
+| `{CONTROL_URL}/builds/{owner}/{repo}/{run_id}` | control | Live status of one run: jobs, timings, result, links to the hub page once published. |
+| `{CONTROL_URL}/images/{name}` and `/images/{name}/{tag}` | control | Fleet-board drill-down; README badges link here. |
+| `{CONTROL_URL}/badge/{name}/{tag}.svg` | control | CI status badge for the latest live build with that release tag. |
+| `{CONTROL_URL}/events` | control | Signed `build.started` / `build.summary` intake (above). |
+
+`HUB_URL` and `CONTROL_URL` are org-level Actions variables; the shared workflow reads them.
 
 ## 11. Versioning the contracts
 
