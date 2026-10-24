@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://linuxserver-playground.github.io/builder/schemas/control-event.schema.json",
+  "title": "Control plane event",
+  "description": "Events the shared workflow POSTs to the control plane at /events, signed with HMAC-SHA256 over the body (X-Control-Signature: sha256=<hex>). GitHub webhooks carry the rest.",
+  "type": "object",
+  "required": ["schema", "type", "sent", "repository", "run_id"],
+  "properties": {
+    "schema": { "const": 1 },
+    "type": { "enum": ["build.started", "build.summary"] },
+    "sent": { "type": "string", "format": "date-time" },
+    "repository": { "type": "string", "pattern": "^[^/]+/[^/]+$" },
+    "run_id": { "type": "integer" },
+    "run_url": { "type": "string", "format": "uri" },
+    "image": { "type": "string" },
+    "branch": { "type": "string" },
+    "mode": { "enum": ["live", "dev", "pr"] },
+    "pull_request": { "type": "integer" },
+    "reason": { "type": "string" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "type": { "const": "build.summary" } } },
+      "then": {
+        "required": ["result", "bundle"],
+        "properties": {
+          "result": { "enum": ["success", "failure", "cancelled", "skipped"] },
+          "failed_job": { "type": "string" },
+          "bundle": {
+            "description": "The build.json record, or null when the build failed before producing one.",
+            "oneOf": [{ "type": "null" }, { "$ref": "bundle.schema.json" }]
+          },
+          "release_url": { "type": "string", "format": "uri" },
+          "artifact_url": { "type": "string", "format": "uri", "description": "Workflow artifact holding the bundle for dev/pr builds." }
+        }
+      }
+    }
+  ]
+}

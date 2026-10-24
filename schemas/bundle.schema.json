@@ -1,0 +1,221 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://linuxserver-playground.github.io/builder/schemas/bundle.schema.json",
+  "title": "Build bundle record (build.json)",
+  "description": "Written by the shared workflow at the end of every build and attached to the GitHub Release (live) or uploaded as a workflow artifact (dev, pr). The hub validates it on ingest.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "image", "repository", "branch", "mode", "version", "commit", "created", "reason", "base", "platforms", "labels", "config", "dockerfile", "test", "assets", "workflow"],
+  "properties": {
+    "schema": { "const": 1 },
+    "image": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "repository": { "type": "string", "pattern": "^[^/]+/[^/]+$", "description": "owner/repo" },
+    "branch": { "type": "string" },
+    "mode": { "enum": ["live", "dev", "pr"] },
+    "pull_request": { "type": "integer", "description": "PR number when mode is pr." },
+    "version": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["upstream", "upstream_clean", "ls_build", "tag"],
+      "properties": {
+        "upstream": { "type": "string", "description": "As resolved, before sanitising." },
+        "upstream_clean": { "type": "string" },
+        "semver": { "type": "string" },
+        "ls_build": { "type": "integer", "minimum": 0, "description": "N in -lsN. 0 for dev and pr builds." },
+        "tag": { "type": "string", "description": "The primary tag: <T-><upstream>-ls<N>, or the dev/pr tag." },
+        "release_tag": { "type": "string", "description": "The branch's release tag (latest, develop...)." },
+        "tags": { "type": "array", "items": { "type": "string" }, "description": "Every tag pushed, unprefixed and arch-prefixed." },
+        "source": { "type": "string", "description": "upstream.version.type from the manifest." },
+        "source_url": { "type": "string", "description": "A link to the upstream release, commit or feed." }
+      }
+    },
+    "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "created": { "type": "string", "format": "date-time" },
+    "reason": { "enum": ["push", "upstream", "packages", "rebuild", "manual", "pull_request"], "description": "Why this build ran." },
+    "previous": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The previous live release of this branch, for diffs.",
+      "properties": { "tag": { "type": "string" }, "release_url": { "type": "string", "format": "uri" } }
+    },
+    "base": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["family", "image"],
+      "properties": {
+        "family": { "type": "string" },
+        "image": { "type": "string", "description": "FROM reference as written." },
+        "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$", "description": "Resolved base digest at build time (amd64)." },
+        "build_version": { "type": "string", "description": "The base image's build_version label." }
+      }
+    },
+    "platforms": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["arch", "digest", "size"],
+        "properties": {
+          "arch": { "enum": ["amd64", "arm64"] },
+          "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$", "description": "Platform manifest digest." },
+          "size": { "type": "integer", "description": "Sum of compressed layer sizes in bytes." },
+          "uncompressed_size": { "type": "integer" },
+          "layers": { "type": "integer", "description": "Layer count." },
+          "runner": { "type": "string", "description": "Runner label that built it." },
+          "build_seconds": { "type": "number" }
+        }
+      }
+    },
+    "index_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$", "description": "Multi-platform index digest after publish." },
+    "labels": { "type": "object", "additionalProperties": { "type": "string" } },
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "From the image config of the amd64 platform.",
+      "properties": {
+        "env": { "type": "array", "items": { "type": "string" } },
+        "exposed_ports": { "type": "array", "items": { "type": "string" } },
+        "volumes": { "type": "array", "items": { "type": "string" } },
+        "entrypoint": { "type": "array", "items": { "type": "string" } },
+        "cmd": { "type": "array", "items": { "type": "string" } },
+        "user": { "type": "string" },
+        "working_dir": { "type": "string" }
+      }
+    },
+    "dockerfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["amd64"],
+      "properties": { "amd64": { "type": "string" }, "arm64": { "type": "string" } },
+      "description": "Dockerfile text as built (after the LSIO_FIRST_PARTY injection)."
+    },
+    "init_graph": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The s6-rc dependency graph.",
+      "properties": {
+        "d2": { "type": "string" },
+        "units": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "type", "depends_on"],
+            "properties": {
+              "name": { "type": "string" },
+              "type": { "enum": ["oneshot", "longrun", "bundle"] },
+              "depends_on": { "type": "array", "items": { "type": "string" } },
+              "source": { "enum": ["base", "image", "mod"] },
+              "script": { "type": "string", "description": "The run script text when it belongs to this image." }
+            }
+          }
+        }
+      }
+    },
+    "packages": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Summary per arch; full data in packages.<arch>.json.gz.",
+      "patternProperties": {
+        "^(amd64|arm64)$": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["count", "distro", "hash"],
+          "properties": {
+            "count": { "type": "integer" },
+            "distro": { "type": "string", "description": "From /etc/os-release, e.g. 'Alpine Linux v3.22'." },
+            "hash": { "type": "string", "description": "md5 of package_versions.<arch>.txt, first 8 hex chars." },
+            "by_type": { "type": "object", "additionalProperties": { "type": "integer" } }
+          }
+        }
+      }
+    },
+    "test": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "success"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "success": { "type": "boolean" },
+        "per_arch": {
+          "type": "object",
+          "patternProperties": { "^(amd64|arm64)$": { "type": "boolean" } }
+        },
+        "report_url": { "type": "string", "format": "uri", "description": "Where the control plane serves the HTML report." }
+      }
+    },
+    "notes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "linuxserver": { "type": "string", "description": "Auto-generated notes for commits since the previous release." },
+        "upstream": { "type": "string", "description": "Upstream release notes, verbatim." },
+        "upstream_url": { "type": "string" }
+      }
+    },
+    "assets": {
+      "type": "array",
+      "description": "Every file attached with this record.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "size", "sha256"],
+        "properties": {
+          "name": { "type": "string" },
+          "size": { "type": "integer" },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "url": { "type": "string", "format": "uri", "description": "Release asset browser_download_url when attached to a Release." }
+        }
+      }
+    },
+    "workflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id", "run_url", "workflows_ref"],
+      "properties": {
+        "run_id": { "type": "integer" },
+        "run_url": { "type": "string", "format": "uri" },
+        "workflows_ref": { "type": "string", "description": "The workflows repo ref that built this, e.g. v1 or a sha." },
+        "ci_version": { "type": "string", "description": "The ci image tag used for testing." }
+      }
+    }
+  },
+  "$defs": {
+    "layer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "digest", "size"],
+      "properties": {
+        "index": { "type": "integer" },
+        "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "diff_id": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "size": { "type": "integer", "description": "Compressed bytes." },
+        "uncompressed_size": { "type": "integer" },
+        "created_by": { "type": "string", "description": "The Dockerfile instruction." },
+        "dockerfile_lines": { "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 2, "description": "[start, end] from provenance." },
+        "from_base": { "type": "boolean", "description": "Layer belongs to the base image." },
+        "empty": { "type": "boolean" }
+      }
+    },
+    "file_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "layer", "type"],
+      "properties": {
+        "path": { "type": "string" },
+        "layer": { "type": "integer", "description": "Index into layers.<arch>.json." },
+        "type": { "enum": ["file", "dir", "symlink", "hardlink", "device", "other"] },
+        "size": { "type": "integer" },
+        "mode": { "type": "string" },
+        "uid": { "type": "integer" },
+        "gid": { "type": "integer" },
+        "digest": { "type": "string", "description": "sha256, first 16 hex chars." },
+        "link_target": { "type": "string" },
+        "package": { "type": "string", "description": "Owning package purl when known." },
+        "mime": { "type": "string" },
+        "executable": { "type": "boolean" }
+      }
+    }
+  }
+}

@@ -1,0 +1,511 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://linuxserver-playground.github.io/builder/schemas/image.schema.json",
+  "title": "LinuxServer image manifest (image.yml)",
+  "description": "The single hand-edited metadata file of an image repository. One per live branch. Everything else (README, docs page, store templates, proxy confs, kubernetes manifests, build settings) derives from it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "name", "summary", "upstream", "release", "build", "runtime", "docs"],
+  "properties": {
+    "schema": { "const": 1, "description": "Contract major version." },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,62}$",
+      "description": "Image name: lscr.io/linuxserver/<name>, repo docker-<name>."
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 80,
+      "description": "Display name, e.g. 'Sonarr'. Defaults to name capitalised."
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 10,
+      "description": "One paragraph of Markdown describing the application. Rendered in README, docs, stores and the API."
+    },
+    "extras": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Optional bullet points shown under the summary."
+    },
+    "upstream": { "$ref": "#/$defs/upstream" },
+    "release": { "$ref": "#/$defs/release" },
+    "build": { "$ref": "#/$defs/build" },
+    "test": { "$ref": "#/$defs/test" },
+    "runtime": { "$ref": "#/$defs/runtime" },
+    "docs": { "$ref": "#/$defs/docs" },
+    "proxy": { "$ref": "#/$defs/proxy" },
+    "publish": { "$ref": "#/$defs/publish" },
+    "deprecation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": { "type": "boolean" },
+        "message": { "type": "string", "description": "Shown in README, docs, stores and printed by the container at start." }
+      }
+    },
+    "changelog": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["date", "text"],
+        "properties": {
+          "date": { "type": "string", "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+          "text": { "type": "string", "minLength": 3 }
+        }
+      },
+      "description": "Newest first. Every Dockerfile or root/ change adds an entry."
+    }
+  },
+  "$defs": {
+    "markdown": { "type": "string" },
+    "optional_flag": {
+      "description": "true: required parameter. 'optional': shown with an #optional marker. false: omitted.",
+      "oneOf": [{ "type": "boolean" }, { "const": "optional" }]
+    },
+
+    "upstream": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version"],
+      "properties": {
+        "url": { "type": "string", "format": "uri", "description": "The project's website." },
+        "version": { "$ref": "#/$defs/version_source" },
+        "notes": { "$ref": "#/$defs/notes_source" },
+        "sponsor": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "url"],
+            "properties": { "name": { "type": "string" }, "url": { "type": "string", "format": "uri" } }
+          },
+          "description": "Upstream donation links, written to /donate.txt in the image."
+        }
+      }
+    },
+
+    "transform": {
+      "type": "array",
+      "description": "Regex substitutions applied in order to the raw version string (Python re syntax).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["regex", "replace"],
+        "properties": { "regex": { "type": "string" }, "replace": { "type": "string" } }
+      }
+    },
+
+    "version_source": {
+      "type": "object",
+      "description": "Where the upstream version comes from. The scheduler and the build resolve it identically.",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "enum": [
+            "github_release", "github_commit", "gitlab_commit", "codeberg_release", "gitea_release",
+            "json", "npm", "pip", "alpine_apk", "deb_packages", "deb_repo", "blob", "os", "command"
+          ]
+        },
+        "transform": { "$ref": "#/$defs/transform" },
+        "require_assets": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "URL templates (${VERSION} substituted) that must return 200 before a build is triggered. Replaces external_artifact_check."
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "github_release" } } },
+          "then": {
+            "required": ["repo"],
+            "properties": {
+              "repo": { "type": "string", "pattern": "^[^/]+/[^/]+$" },
+              "prerelease": { "type": "boolean", "default": false, "description": "false: GitHub's latest stable release. true: newest release including prereleases." },
+              "exclude": { "type": "string", "description": "Regex; releases whose tag matches are skipped." }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "codeberg_release" } } },
+          "then": { "required": ["repo"], "properties": { "repo": { "type": "string", "pattern": "^[^/]+/[^/]+$" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "gitea_release" } } },
+          "then": { "required": ["base_url", "repo"], "properties": { "base_url": { "type": "string", "format": "uri" }, "repo": { "type": "string" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "github_commit" } } },
+          "then": { "required": ["repo", "branch"], "properties": { "repo": { "type": "string" }, "branch": { "type": "string" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "gitlab_commit" } } },
+          "then": { "required": ["project_id", "branch"], "properties": { "project_id": { "type": "integer" }, "branch": { "type": "string" }, "web_url": { "type": "string", "format": "uri" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "json" } } },
+          "then": { "required": ["url", "jq"], "properties": { "url": { "type": "string", "format": "uri" }, "jq": { "type": "string", "description": "jq expression applied to the body." } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "npm" } } },
+          "then": { "required": ["package"], "properties": { "package": { "type": "string" }, "dist_tag": { "type": "string", "default": "latest" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "pip" } } },
+          "then": { "required": ["package"], "properties": { "package": { "type": "string" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "alpine_apk" } } },
+          "then": { "required": ["repo_url", "package"], "properties": { "repo_url": { "type": "string", "format": "uri", "description": "Repo root, e.g. http://dl-cdn.alpinelinux.org/alpine/v3.22/community/ ; APKINDEX for every build platform must agree." }, "package": { "type": "string" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "deb_packages" } } },
+          "then": { "required": ["index_url", "package"], "properties": { "index_url": { "type": "string", "format": "uri", "description": "A Packages index URL." }, "package": { "type": "string" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "deb_repo" } } },
+          "then": { "required": ["image", "sources", "packages"], "properties": { "image": { "type": "string", "description": "Distro image to resolve in, e.g. ubuntu:noble" }, "sources": { "type": "string", "description": "sources.list line(s)" }, "packages": { "type": "string", "description": "Space separated package names; the version is an md5 of their apt-cache show output." } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "blob" } } },
+          "then": { "required": ["url"], "properties": { "url": { "type": "string", "format": "uri", "description": "The version is the first 8 hex chars of the md5 of the body." } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "command" } } },
+          "then": {
+            "required": ["run"],
+            "properties": { "run": { "type": "string", "description": "A bash command printing the version. Escape hatch: prefer a typed source. May use GITHUB_TOKEN." } }
+          }
+        }
+      ]
+    },
+
+    "notes_source": {
+      "type": "object",
+      "description": "Where upstream release notes come from. Stored verbatim with the Release and in the hub.",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["github_release", "codeberg_release", "gitea_release", "github_commit", "gitlab_commit", "json", "command", "none"] },
+        "repo": { "type": "string" },
+        "base_url": { "type": "string", "format": "uri" },
+        "tag": { "type": "string", "description": "Template for the release tag, e.g. 'v${VERSION}'. Defaults to '${VERSION}'." },
+        "project_id": { "type": "integer" },
+        "branch": { "type": "string" },
+        "url": { "type": "string" },
+        "jq": { "type": "string" },
+        "run": { "type": "string" }
+      }
+    },
+
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["branch", "tag", "channel"],
+      "properties": {
+        "branch": { "type": "string", "description": "The git branch this manifest lives on. Builds of other branches are dev builds." },
+        "tag": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$", "description": "The tag this branch publishes: 'latest' on the default branch, otherwise usually the branch name." },
+        "channel": { "enum": ["stable", "prerelease"], "description": "Marks the GitHub Release as a prerelease when 'prerelease'." },
+        "tags": {
+          "type": "array",
+          "description": "Every tag the image publishes across branches, for the Version Tags table and store branch pickers. Include this branch's tag.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["tag", "description"],
+            "properties": {
+              "tag": { "type": "string" },
+              "description": { "type": "string" },
+              "deprecated": { "type": "boolean", "default": false },
+              "unraid_extra": { "type": "string", "description": "Raw XML inserted into the Unraid <Branch> element." }
+            }
+          }
+        }
+      }
+    },
+
+    "build": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["base", "platforms"],
+      "properties": {
+        "base": { "enum": ["alpine", "alpine-nginx", "ubuntu", "debian", "fedora", "arch", "el", "selkies", "kasmvnc", "rdesktop", "scratch", "other"], "description": "Base image family. Drives package-manager aware steps and docs snippets." },
+        "version_arg": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$", "description": "The Dockerfile ARG that receives the upstream version." },
+        "platforms": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["amd64", "arm64"] } },
+        "dockerfiles": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": { "amd64": { "type": "string", "default": "Dockerfile" }, "arm64": { "type": "string", "default": "Dockerfile.aarch64" } }
+        },
+        "package_check": { "type": "boolean", "default": true, "description": "Include in the weekly package refresh schedule." },
+        "build_args": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Extra --build-arg values." },
+        "first_party": { "type": "boolean", "default": true, "description": "Inject ENV LSIO_FIRST_PARTY=true after FROM. false for base images." }
+      }
+    },
+
+    "test": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean", "default": true },
+        "startup_timeout": { "type": "integer", "minimum": 10, "maximum": 1800, "default": 120, "description": "Seconds to wait for '[ls.io-init] done'." },
+        "env": { "type": "object", "additionalProperties": { "type": "string" } },
+        "web": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["port"],
+          "properties": {
+            "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+            "path": { "type": "string", "default": "/" },
+            "scheme": { "enum": ["http", "https"], "default": "http" },
+            "auth": { "type": "string", "description": "user:password for basic auth" },
+            "screenshot_delay": { "type": "integer", "default": 10 },
+            "screenshot_timeout": { "type": "integer", "default": 120 }
+          }
+        },
+        "sbom_timeout": { "type": "integer", "default": 900 }
+      }
+    },
+
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "container_name": { "type": "string", "description": "Defaults to name." },
+        "common_env": { "$ref": "#/$defs/optional_flag", "default": true, "description": "Include PUID, PGID, TZ." },
+        "network": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode"],
+          "properties": { "mode": { "type": "string" }, "description": { "type": "string" }, "optional": { "type": "boolean", "default": false } }
+        },
+        "hostname": { "$ref": "#/$defs/scalar_param" },
+        "mac_address": { "$ref": "#/$defs/scalar_param" },
+        "privileged": { "$ref": "#/$defs/optional_flag", "default": false },
+        "ports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["internal", "description"],
+            "properties": {
+              "internal": { "type": "string", "pattern": "^\\d{1,5}(/(tcp|udp))?$" },
+              "external": { "type": "string", "pattern": "^\\d{1,5}$", "description": "Defaults to the internal port number." },
+              "description": { "type": "string" },
+              "name": { "type": "string", "description": "Short label for store UIs, e.g. 'WebUI'." },
+              "optional": { "type": "boolean", "default": false }
+            }
+          }
+        },
+        "volumes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "description"],
+            "properties": {
+              "path": { "type": "string", "pattern": "^/" },
+              "host_path": { "type": "string", "description": "Example host path. Defaults to /path/to/<name>/<last segment>." },
+              "mode": { "enum": ["rw", "ro"], "default": "rw" },
+              "description": { "type": "string" },
+              "name": { "type": "string" },
+              "optional": { "type": "boolean", "default": false },
+              "default_host_path": { "type": "boolean", "default": false, "description": "Store UIs prefill host_path (e.g. /lib/modules)." }
+            }
+          }
+        },
+        "env": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "description"],
+            "properties": {
+              "name": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+              "value": { "type": "string", "default": "", "description": "Example or default value." },
+              "description": { "type": "string" },
+              "title": { "type": "string", "description": "Human label for store UIs." },
+              "options": { "type": "array", "items": { "type": "string" }, "description": "Allowed values; stores render a dropdown." },
+              "optional": { "type": "boolean", "default": false },
+              "secret": { "type": "boolean", "description": "Mask in UIs. Defaults to true when the name contains TOKEN, PASS or KEY." }
+            }
+          }
+        },
+        "devices": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "description"],
+            "properties": {
+              "path": { "type": "string", "pattern": "^/dev/" },
+              "host_path": { "type": "string" },
+              "description": { "type": "string" },
+              "name": { "type": "string" },
+              "optional": { "type": "boolean", "default": false }
+            }
+          }
+        },
+        "cap_add": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["cap"],
+            "properties": { "cap": { "type": "string", "pattern": "^[A-Z_]+$" }, "description": { "type": "string" }, "optional": { "type": "boolean", "default": false } }
+          }
+        },
+        "security_opt": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["run", "compose", "description"],
+            "properties": { "run": { "type": "string" }, "compose": { "type": "string" }, "description": { "type": "string" }, "optional": { "type": "boolean", "default": false } }
+          }
+        },
+        "custom": {
+          "type": "array",
+          "description": "Any other docker run flag with its compose key, e.g. shm-size / shm_size.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["flag", "compose", "value", "description"],
+            "properties": {
+              "flag": { "type": "string", "description": "docker run flag without leading --" },
+              "compose": { "type": "string" },
+              "value": { "oneOf": [{ "type": "string" }, { "type": "array", "items": { "type": "string" } }] },
+              "description": { "type": "string" },
+              "optional": { "type": "boolean", "default": false }
+            }
+          }
+        },
+        "readonly": { "$ref": "#/$defs/capability" },
+        "nonroot": { "$ref": "#/$defs/capability" }
+      }
+    },
+
+    "scalar_param": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "description"],
+      "properties": { "value": { "type": "string" }, "description": { "type": "string" }, "optional": { "type": "boolean", "default": false } }
+    },
+
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["supported"],
+      "properties": { "supported": { "type": "boolean" }, "notes": { "$ref": "#/$defs/markdown", "description": "Caveats shown under the read-only or non-root section." } }
+    },
+
+    "docs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["categories"],
+      "properties": {
+        "categories": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "logo": { "type": "string", "description": "URL, or a filename in the image-docs asset repo." },
+        "setup": { "$ref": "#/$defs/markdown", "description": "The Application Setup section. Admonitions as ?+note[Title](|text|)." },
+        "optional_parameters": { "$ref": "#/$defs/markdown" },
+        "notices": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "hwaccel": { "type": "boolean" },
+            "keyboard": { "type": "boolean" },
+            "media": { "type": "boolean" },
+            "seccomp": { "type": "boolean" },
+            "strict_proxy": { "type": "boolean", "description": "Image serves https itself; include the strict proxy notice." },
+            "selkies": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": { "enabled": { "type": "boolean" }, "nvidia": { "type": "boolean" }, "https_port": { "type": "integer" }, "http_port": { "type": "integer" } }
+            },
+            "kasm": { "type": "boolean" }
+          }
+        },
+        "external_application": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["cli", "compose"],
+          "description": "A second container the app needs (a database); snippets per surface.",
+          "properties": { "cli": { "type": "string" }, "compose": { "type": "string" }, "unraid": { "type": "string" }, "kubernetes": { "type": "string" } }
+        },
+        "custom_readme": { "$ref": "#/$defs/markdown", "description": "Replace the whole generated README (internal tools only)." },
+        "init_diagram": { "type": "boolean", "default": true, "description": "Emit the s6 dependency graph into the bundle and docs." }
+      }
+    },
+
+    "proxy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["port"],
+      "description": "Generates SWAG reverse proxy samples.",
+      "properties": {
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "scheme": { "enum": ["http", "https"], "default": "http" },
+        "subdomain": { "type": "boolean", "default": true },
+        "subfolder": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["supported"],
+          "properties": {
+            "supported": { "type": "boolean" },
+            "base_url_note": { "type": "string", "description": "Where in the app the base URL is set, e.g. 'Settings → General → URL Base'." }
+          }
+        },
+        "api_locations": { "type": "array", "items": { "type": "string", "pattern": "^/" }, "description": "Paths that bypass auth includes (e.g. /api)." },
+        "websocket": { "type": "boolean", "default": false },
+        "extra_locations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path"],
+            "properties": { "path": { "type": "string" }, "port": { "type": "integer" }, "scheme": { "enum": ["http", "https"] }, "auth": { "type": "boolean", "default": true }, "raw": { "type": "string", "description": "Extra nginx directives inside the location." } }
+          }
+        },
+        "notes": { "type": "array", "items": { "type": "string" }, "description": "Comment lines at the top of the sample." }
+      }
+    },
+
+    "publish": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "stores": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "unraid": { "type": "boolean", "default": true },
+            "portainer": { "type": "boolean", "default": true },
+            "casaos": { "type": "boolean", "default": true },
+            "umbrel": { "type": "boolean", "default": true },
+            "runtipi": { "type": "boolean", "default": true },
+            "cosmos": { "type": "boolean", "default": true }
+          }
+        },
+        "unraid": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "requirement": { "type": "string", "description": "Text for <Requires>." },
+            "webui": { "type": "string", "description": "Override the WebUI URL template." }
+          }
+        },
+        "kubernetes": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean", "default": true },
+            "workload": { "enum": ["Deployment", "StatefulSet"], "default": "Deployment" },
+            "persistence": { "type": "array", "items": { "type": "string" }, "description": "Volume paths that get a PersistentVolumeClaim. Defaults to required volumes." }
+          }
+        },
+        "quadlet": { "type": "boolean", "default": true }
+      }
+    }
+  }
+}

@@ -1,0 +1,79 @@
+# Example manifest converted from linuxserver/docker-sonarr (master) readme-vars.yml and jenkins-vars.yml.
+schema: 1
+name: sonarr
+title: Sonarr
+summary: |
+  [Sonarr](https://sonarr.tv/) (formerly NZBdrone) is a PVR for usenet and bittorrent users. It can monitor
+  multiple RSS feeds for new episodes of your favorite shows and will grab, sort and rename them. It can also
+  be configured to automatically upgrade the quality of files already downloaded when a better quality format
+  becomes available.
+
+upstream:
+  url: https://sonarr.tv/
+  version:
+    type: json
+    url: https://services.sonarr.tv/v1/releases
+    jq: '.[] | select(.releaseChannel=="v4-stable") | .version'
+  notes:
+    type: github_release
+    repo: Sonarr/Sonarr
+    tag: v${VERSION}
+  sponsor:
+    - { name: Sonarr, url: https://sonarr.tv/donate }
+
+release:
+  branch: master
+  tag: latest
+  channel: stable
+  tags:
+    - { tag: latest, description: Stable releases from Sonarr }
+    - { tag: develop, description: Development releases from Sonarr }
+
+build:
+  base: alpine
+  version_arg: SONARR_VERSION
+  platforms: [amd64, arm64]
+
+test:
+  startup_timeout: 240
+  web:
+    port: 8989
+    path: /system/status
+
+runtime:
+  ports:
+    - { internal: "8989", description: The port for the Sonarr web interface, name: WebUI }
+  volumes:
+    - { path: /config, host_path: /path/to/sonarr/data, description: Database and sonarr configs }
+    - { path: /tv, host_path: /path/to/tvseries, description: Location of TV library on disk (See note in Application setup), optional: true }
+    - { path: /downloads, host_path: /path/to/downloadclient-downloads, description: Location of download managers output directory (See note in Application setup), optional: true }
+  readonly: { supported: true }
+  nonroot: { supported: true }
+
+docs:
+  categories: [Media Management]
+  logo: https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/sonarr-banner.png
+  setup: |
+    Access the webui at `<your-ip>:8989`, for more information check out [Sonarr](https://sonarr.tv/).
+  notices:
+    media: true
+
+proxy:
+  port: 8989
+  scheme: http
+  subdomain: true
+  subfolder:
+    supported: true
+    base_url_note: Settings → General → URL Base, set to /sonarr
+  api_locations: [/api]
+
+publish:
+  kubernetes:
+    workload: Deployment
+    persistence: [/config]
+
+changelog:
+  - { date: 2026-10-19, text: Add krb5-libs for better postgresql support. }
+  - { date: 2026-10-12, text: "Update `develop` branch to v5. New v5 installs will write initial credentials to container log." }
+  - { date: 2026-07-09, text: Workaround malformed ncurses database. }
+  - { date: 2026-07-04, text: Rebase to Alpine 3.24. }

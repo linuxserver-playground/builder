@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://linuxserver-playground.github.io/builder/schemas/test-report.schema.json",
+  "title": "Container test report (test.<arch>.json)",
+  "description": "Written by the ci harness after running one image on one architecture.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "image", "tag", "arch", "started", "finished", "success", "tests"],
+  "properties": {
+    "schema": { "const": 1 },
+    "image": { "type": "string" },
+    "tag": { "type": "string" },
+    "arch": { "enum": ["amd64", "arm64"] },
+    "started": { "type": "string", "format": "date-time" },
+    "finished": { "type": "string", "format": "date-time" },
+    "success": { "type": "boolean" },
+    "runner": { "type": "string" },
+    "engine": { "type": "string", "description": "Docker engine version on the runner." },
+    "ci_version": { "type": "string" },
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "status"],
+        "properties": {
+          "name": { "type": "string", "examples": ["Container startup", "Dotnet check", "Get package info", "Create SBOM", "Take screenshot"] },
+          "status": { "enum": ["PASS", "FAIL", "SKIP", "WARN"] },
+          "message": { "type": "string" },
+          "seconds": { "type": "number" }
+        }
+      }
+    },
+    "warnings": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Named warnings (dotnet, uwsgi...) with their text." },
+    "startup_seconds": { "type": "number", "description": "Time to '[ls.io-init] done'." },
+    "files": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Paths inside test.<arch>.tar.gz.",
+      "properties": {
+        "html": { "type": "string" },
+        "container_log": { "type": "string" },
+        "screenshot": { "type": "string" },
+        "browser_log": { "type": "string" },
+        "shellcheck": { "type": "string" },
+        "sysinfo": { "type": "string" }
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Cheap observations while the container ran idle.",
+      "properties": {
+        "rss_bytes": { "type": "integer" },
+        "pids": { "type": "integer" },
+        "listening_tcp": { "type": "array", "items": { "type": "integer" } },
+        "listening_udp": { "type": "array", "items": { "type": "integer" } },
+        "s6_services": { "type": "array", "items": { "type": "string" } },
+        "changed_paths": { "type": "integer", "description": "docker diff count after start." }
+      }
+    }
+  }
+}

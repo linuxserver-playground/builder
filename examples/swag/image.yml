@@ -1,0 +1,74 @@
+# Example manifest converted from linuxserver/docker-swag (master) readme-vars.yml and jenkins-vars.yml.
+schema: 1
+name: swag
+title: SWAG
+summary: |
+  SWAG - Secure Web Application Gateway (formerly known as letsencrypt, no relation to Let's Encrypt™) sets up
+  an Nginx webserver and reverse proxy with php support and a built-in certbot client that automates free SSL
+  server certificate generation and renewal processes (Let's Encrypt and ZeroSSL). It also contains fail2ban
+  for intrusion prevention.
+
+upstream:
+  url: https://linuxserver.io
+  version:
+    type: pip
+    package: certbot
+  notes:
+    type: none
+  sponsor:
+    - { name: Certbot, url: https://supporters.eff.org/donate/support-work-on-certbot }
+
+release:
+  branch: master
+  tag: latest
+  channel: stable
+
+build:
+  base: alpine-nginx
+  version_arg: CERTBOT_VERSION
+  platforms: [amd64, arm64]
+
+test:
+  enabled: false
+
+runtime:
+  cap_add:
+    - { cap: NET_ADMIN, description: Required for fail2Ban to be able to modify iptables rules. }
+  ports:
+    - { internal: "443", description: HTTPS port, name: HTTPS }
+    - { internal: "80", description: HTTP port (required for http validation and http -> https redirect), optional: true, name: HTTP }
+  volumes:
+    - { path: /config, host_path: /path/to/swag/config, description: Persistent config files }
+  env:
+    - { name: URL, value: example.com, description: "Top url you have control over (e.g. `example.com` if you own it, or `customsubdomain.example.com` if dynamic dns)." }
+    - { name: VALIDATION, value: http, description: "Certbot validation method to use, options are `http` or `dns` (`dns` method also requires `DNSPLUGIN` variable set).", options: [http, dns] }
+    - { name: SUBDOMAINS, value: "www,", optional: true, description: "Subdomains you'd like the cert to cover (comma separated, no spaces) ie. `www,ftp,cloud`. For a wildcard cert, set this *exactly* to `wildcard` (wildcard cert is available via `dns` validation only)" }
+    - { name: CERTPROVIDER, value: "", optional: true, description: "Optionally define the cert provider. Set to `zerossl` for ZeroSSL certs. Otherwise defaults to Let's Encrypt." }
+    - { name: DNSPLUGIN, value: cloudflare, optional: true, description: "Required if `VALIDATION` is set to `dns`. See the README for the list of plugins." }
+    - { name: PROPAGATION, value: "", optional: true, description: Optionally override (in seconds) the default propagation time for the dns plugins. }
+    - { name: EMAIL, value: "", optional: true, description: Optional e-mail address used for cert expiration notifications (Required for ZeroSSL). }
+    - { name: ONLY_SUBDOMAINS, value: "false", optional: true, description: "If you wish to get certs only for certain subdomains, but not the main domain, set this to `true`" }
+    - { name: EXTRA_DOMAINS, value: "", optional: true, description: "Additional fully qualified domain names (comma separated, no spaces) ie. `example.net,subdomain.example.net,*.example.org`" }
+    - { name: STAGING, value: "false", optional: true, description: "Set to `true` to retrieve certs in staging mode. Only to be used for testing purposes." }
+    - { name: DISABLE_F2B, value: "", optional: true, description: "Set to `true` to disable the Fail2ban service in the container." }
+    - { name: SWAG_AUTORELOAD, value: "", optional: true, description: "Set to `true` to enable automatic reloading of confs on change without restarting nginx." }
+    - { name: SWAG_AUTORELOAD_WATCHLIST, value: "", optional: true, description: "A pipe-separated list of additional folders for auto reload to watch in addition to `/config/nginx`" }
+  readonly:
+    supported: true
+    notes: |
+      * Certbot and fail2ban need `/config` and `/run` writable; nothing else is written at runtime.
+
+docs:
+  categories: [Reverse Proxy]
+  logo: https://github.com/linuxserver/docker-templates/raw/master/linuxserver.io/img/swag.gif
+  setup: |
+    See the [SWAG setup guide](https://docs.linuxserver.io/general/swag) for a walkthrough.
+
+publish:
+  stores:
+    umbrel: false
+  kubernetes:
+    enabled: false
+
+changelog:
+  - { date: 2026-10-01, text: Example entry; the live changelog is long and lives in the real repository. }
