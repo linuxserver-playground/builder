@@ -55,9 +55,10 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["arch", "digest", "size"],
+        "required": ["arch", "result"],
         "properties": {
           "arch": { "enum": ["amd64", "arm64"] },
+          "result": { "enum": ["success", "failure", "cancelled", "skipped"], "description": "Outcome of this architecture's build and test job. digest and size are present only on success." },
           "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$", "description": "Platform manifest digest." },
           "size": { "type": "integer", "description": "Sum of compressed layer sizes in bytes." },
           "uncompressed_size": { "type": "integer" },

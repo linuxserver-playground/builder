@@ -9,7 +9,7 @@ from pathlib import Path
 
 from .check import check_repo
 from .manifest import ManifestError, Settings, load_valid
-from .render import ALL_FILES, render_all, write_files
+from .render import ALL_FILES, REPO_FILES, render_all, write_files
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -21,9 +21,12 @@ def _parser() -> argparse.ArgumentParser:
     check = sub.add_parser("check", help="validate image.yml and everything generated from it; exit 1 on failure")
     check.add_argument("repo_dir", nargs="?", default=".")
 
-    render = sub.add_parser("render", help="write README.md, AGENTS.md, LICENSE, the workflow and .builder-out/")
+    render = sub.add_parser("render", help="write README.md, AGENTS.md, LICENSE and the build workflow")
     render.add_argument("repo_dir", nargs="?", default=".")
     render.add_argument("--only", help="comma separated list of generated paths to write", default=None)
+    render.add_argument(
+        "--all", action="store_true", help="also write the hub/docs extras into .builder-out/ (not for image repos)"
+    )
 
     migrate = sub.add_parser("migrate", help="convert readme-vars.yml + jenkins-vars.yml into image.yml")
     migrate.add_argument("repo_dir", nargs="?", default=".")
@@ -48,10 +51,12 @@ def cmd_check(repo_dir: Path, settings: Settings) -> int:
     return 0
 
 
-def cmd_render(repo_dir: Path, settings: Settings, only: str | None) -> int:
+def cmd_render(repo_dir: Path, settings: Settings, only: str | None, everything: bool = False) -> int:
     manifest = load_valid(repo_dir / "image.yml")
     files = render_all(manifest.data, settings)
-    wanted = None
+    # Image repos commit exactly REPO_FILES; the docs page and lite README are rendered by the hub, so
+    # they are written only on request and never land in an image repository by accident.
+    wanted: list[str] | None = None if everything else list(REPO_FILES)
     if only:
         wanted = [p.strip() for p in only.split(",") if p.strip()]
         unknown = [p for p in wanted if p not in ALL_FILES]
@@ -104,7 +109,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "check":
             return cmd_check(repo_dir, settings)
         if args.command == "render":
-            return cmd_render(repo_dir, settings, args.only)
+            return cmd_render(repo_dir, settings, args.only, args.all)
         if args.command == "migrate":
             return cmd_migrate(repo_dir, args.out)
         return cmd_snippets(repo_dir, settings, args.format, args.required_only)

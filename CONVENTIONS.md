@@ -43,6 +43,9 @@ LICENSE                 GPL-3.0, generated
 .github/workflows/build.yml   ~20 lines, generated, calls workflows/image-build.yml@v1
 ```
 
+`builder render` writes exactly those four generated files. The docs page and the lite README are rendered
+by the hub from the same manifest and never live in an image repository.
+
 There is no Jenkinsfile, no jenkins-vars.yml, no readme-vars.yml, no per-repo trigger workflows, no
 issue templates (those come from the org `.github` repo), and no `.jenkins-external`.
 
@@ -69,7 +72,8 @@ A release is identified by `<upstream>-ls<N>`:
 - Images whose `upstream.version.type` is `os` use the first 8 hex characters of the md5 of
   `package_versions.txt` as `<upstream>`, as today.
 - `semver` is derived from `<upstream>` when it contains `MAJOR.MINOR.PATCH`; `MAJOR.MINOR` gets the
-  build date as patch. Non-default branches suffix `-<branch>`.
+  build date as patch. It is stored bare; as a tag it takes the same `T-` prefix as every other tag of a
+  non-default branch (see the table).
 
 Tag set published on a live release of branch `B` with tag `T` (`T` = `latest` on the default branch):
 
@@ -83,7 +87,9 @@ Tag set published on a live release of branch `B` with tag `T` (`T` = `latest` o
 
 Architecture prefixes are `amd64-` and `arm64v8-`. The unprefixed tags are multi-platform indexes.
 
-The git tag and GitHub Release are named `[T-]<upstream>-ls<N>` and are created only on live releases.
+The git tag and GitHub Release are named `[T-]<upstream>-ls<N>` and are created only on live releases. The
+Release's `target_commitish` is always the branch name, never a sha, so a branch's releases can be listed
+without parsing tag prefixes.
 
 ## 4. Namespaces
 
@@ -179,6 +185,15 @@ The control plane learns most things from GitHub webhooks (`workflow_run`, `work
 at the end of every run, authenticated with an HMAC over the body using a per-org secret
 (`CONTROL_EVENTS_SECRET`), because GitHub's events do not carry the image, tag and test results.
 Shape: `schemas/control-event.schema.json`.
+
+### Control plane routes other repos link to
+
+| Route | Purpose |
+| --- | --- |
+| `/builds/{owner}/{repo}/{run_id}` | One build: record, test reports, links. `test.report_url` in the bundle and the CI section of release notes point here. |
+| `/images/{name}` and `/images/{name}/{tag}` | Fleet-board drill-down for one image or one release tag; README badges link here. |
+| `/badge/{name}/{tag}.svg` | CI status badge for the latest live build with that release tag. |
+| `/events` | Signed `build.started` / `build.summary` intake (above). |
 
 ## 11. Versioning the contracts
 

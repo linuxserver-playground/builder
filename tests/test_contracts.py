@@ -121,7 +121,7 @@ def _bundle() -> dict[str, Any]:
             "image": "ghcr.io/linuxserver/baseimage-alpine:3.24",
             "digest": "sha256:" + "b" * 64,
         },
-        "platforms": [{"arch": "amd64", "digest": "sha256:" + "c" * 64, "size": 123}],
+        "platforms": [{"arch": "amd64", "result": "success", "digest": "sha256:" + "c" * 64, "size": 123}],
         "labels": {"org.opencontainers.image.version": "4.0.20.3014-ls1"},
         "config": {"env": ["PATH=/usr/bin"], "exposed_ports": ["8989/tcp"]},
         "dockerfile": {"amd64": "FROM ghcr.io/linuxserver/baseimage-alpine:3.24\n"},
@@ -133,6 +133,14 @@ def _bundle() -> dict[str, Any]:
 
 def test_bundle_example_validates() -> None:
     validate("bundle", _bundle())
+
+
+def test_bundle_failed_platform_needs_no_digest() -> None:
+    data = _bundle()
+    data["platforms"] = [{"arch": "arm64", "result": "failure"}]
+    validate("bundle", data)
+    data["platforms"] = [{"arch": "arm64"}]
+    assert errors("bundle", data)
 
 
 def test_bundle_rejects_bad_digest() -> None:
