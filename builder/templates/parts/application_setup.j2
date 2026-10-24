@@ -1,0 +1,38 @@
+## Application Setup
+{% if setup %}
+
+{{ setup | noter(flavour) | trim }}
+{% endif %}
+{% if notices.strict_proxy %}
+
+### Strict reverse proxies
+
+This image uses a self-signed certificate by default. This naturally means the scheme is `https`.
+If you are using a reverse proxy which validates certificates, you need to [disable this check for the container]({{ docs_url }}/faq#strict-proxy).
+{% endif %}
+{% if notices.seccomp %}
+
+### Seccomp
+
+Modern GUI desktop apps (including some flavors of terminals) have issues with the latest Docker and syscall compatibility, you can use Docker with the `--security-opt seccomp=unconfined` setting to allow these syscalls or try [podman](https://podman.io/) as they have updated their codebase to support them
+{% endif %}
+{% if notices.keyboard %}
+
+{% include "parts/keyboard.j2" %}
+{% endif %}
+{% if notices.hwaccel %}
+
+{% include "parts/hwaccel.j2" %}
+{% endif %}
+{% if notices.media %}
+
+{% include "parts/media.j2" %}
+{% endif %}
+{% if notices.kasm %}
+
+{% include "parts/kasm.j2" %}
+{% endif %}
+{% if selkies %}
+
+{% include "parts/selkies.j2" %}
+{% endif %}

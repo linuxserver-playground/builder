@@ -1,0 +1,5 @@
+{{ "This image is deprecated. We will not offer support for this image and it will not be updated." | admonition(flavour, "deprecation") }}
+{% if deprecation.message %}
+
+{{ deprecation.message | noter(flavour) | trim }}
+{% endif %}

@@ -1,0 +1,9 @@
+{% set flavour = "gfm" %}
+{% include "parts/do_not_edit.j2" %}
+{% if custom_readme %}
+{{ custom_readme | trim }}
+{% else %}
+{% include "parts/group_info.j2" %}
+
+{% include "parts/body.j2" %}
+{% endif %}

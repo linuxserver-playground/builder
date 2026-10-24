@@ -1,0 +1,176 @@
+---
+
+# project information
+project_name: plex
+project_url: "https://plex.tv"
+project_logo: "https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/plex-logo.png"
+project_blurb: "[{{ project_name|capitalize }}]({{ project_url }}) organizes video, music and photos from personal media libraries and streams them to smart TVs, streaming boxes and mobile devices. This container is packaged as a standalone Plex Media Server. Straightforward design and bulk actions mean getting things done faster."
+project_lsio_github_repo_url: "https://github.com/linuxserver/docker-{{ project_name }}"
+project_categories: "Media Servers,Music,Audiobooks"
+# supported architectures
+available_architectures:
+  - {arch: "{{ arch_x86_64 }}", tag: "amd64-latest"}
+  - {arch: "{{ arch_arm64 }}", tag: "arm64v8-latest"}
+# container parameters
+common_param_env_vars_enabled: true #PGID, PUID, etc
+param_container_name: "{{ project_name }}"
+param_usage_include_vols: true
+param_volumes:
+  - {vol_path: "/config", vol_host_path: "/path/to/{{ project_name }}/library", desc: "Plex library location. *This can grow very large, 50gb+ is likely for a large collection.*"}
+  - {vol_path: "/tv", vol_host_path: "/path/to/tvseries", desc: "Media goes here. Add as many as needed e.g. `/movies`, `/tv`, etc."}
+  - {vol_path: "/movies", vol_host_path: "/path/to/movies", desc: "Media goes here. Add as many as needed e.g. `/movies`, `/tv`, etc."}
+param_usage_include_net: true
+param_net: "host"
+param_net_desc: "Use Host Networking"
+param_usage_include_env: true
+param_env_vars:
+  - {env_var: "VERSION", env_value: "docker", desc: "Set whether to update plex or not - see Application Setup section."}
+# optional env variables
+opt_param_usage_include_env: true
+opt_param_env_vars:
+  - {env_var: "PLEX_CLAIM", env_value: "", desc: "Optionally you can obtain a claim token from https://plex.tv/claim and input here. Keep in mind that the claim tokens expire within 4 minutes."}
+optional_parameters: |
+  If you want to run the container in bridge network mode (instead of the recommended host network mode) you will need to specify ports.
+  The [official documentation for ports](https://support.plex.tv/articles/201543147-what-network-ports-do-i-need-to-allow-through-my-firewall/) lists 32400 as the only required port.
+  The rest of the ports are optionally used for specific purposes listed in the documentation.
+  If you have not already claimed your server (first time setup) you need to set `PLEX_CLAIM` to claim a server set up with bridge networking.
+
+  ```
+    -p 32400:32400 \
+    -p 1900:1900/udp \
+    -p 5353:5353/udp \
+    -p 8324:8324 \
+    -p 32410:32410/udp \
+    -p 32412:32412/udp \
+    -p 32413:32413/udp \
+    -p 32414:32414/udp \
+    -p 32469:32469
+
+  ```
+
+  The application accepts a series of environment variables to further customize itself on boot:
+
+  | Parameter | Function |
+  | :---: | --- |
+  | `--device=/dev/dri:/dev/dri` | Add this option to your run command if you plan on using Quicksync hardware acceleration - see Application Setup section.|
+  | `--device=/dev/dvb:/dev/dvb` | Add this option to your run command if you plan on using dvb devices.|
+# application setup block
+app_setup_block_enabled: true
+app_setup_block: |
+  Webui can be found at `<your-ip>:32400/web`
+
+  ?+note[Updates](|If there is no value set for the VERSION variable, then no updates will take place.|)
+
+  ?+note[New users](|For new users, no updates will take place on the first run of the container as there is no preferences file to read your token from, to update restart the Docker container after logging in through the webui.|)
+
+  Valid settings for VERSION are:-
+
+  ?+info[Plexpass](|YOU CANNOT UPDATE TO A PLEXPASS ONLY (BETA) VERSION IF YOU ARE NOT LOGGED IN WITH A PLEXPASS ACCOUNT.|)
+
+  + **`docker`**: Let Docker handle the Plex Version, we keep our Dockerhub Endpoint up to date with the latest public builds. This is the same as leaving this setting out of your create command.
+  + **`latest`**: will update plex to the latest version available that you are entitled to.
+  + **`public`**: will update plexpass users to the latest public version, useful for plexpass users that don't want to be on the bleeding edge but still want the latest public updates.
+  + **`<specific-version>`**: will select a specific version (eg 0.9.12.4.1192-9a47d21) of plex to install, note you cannot use this to access plexpass versions if you do not have plexpass.
+readme_hwaccel: true
+readonly_supported: true
+readonly_message: |
+  * Runtime update of Plex (and thus Plexpass builds) is not supported.
+  * Transcode directory must be mounted to a host path or tmpfs.
+nonroot_supported: true
+nonroot_message: |
+  * Runtime update of Plex (and thus Plexpass builds) is not supported.
+  * Transcode directory must be mounted to a host path or tmpfs.
+# init diagram
+init_diagram: |
+  "plex:latest": {
+    docker-mods
+    base {
+      fix-attr +\nlegacy cont-init
+    }
+    docker-mods -> base
+    legacy-services
+    custom services
+    init-services -> legacy-services
+    init-services -> custom services
+    custom services -> legacy-services
+    legacy-services -> ci-service-check
+    init-migrations -> init-adduser
+    init-os-end -> init-config
+    init-config -> init-config-end
+    init-crontab-config -> init-config-end
+    init-plex-update -> init-config-end
+    init-config -> init-crontab-config
+    init-mods-end -> init-custom-files
+    init-adduser -> init-device-perms
+    base -> init-envfile
+    base -> init-migrations
+    init-config-end -> init-mods
+    init-mods-package-install -> init-mods-end
+    init-mods -> init-mods-package-install
+    init-adduser -> init-os-end
+    init-device-perms -> init-os-end
+    init-envfile -> init-os-end
+    init-config -> init-plex-chown
+    init-plex-chown -> init-plex-claim
+    init-plex-claim -> init-plex-update
+    init-custom-files -> init-services
+    init-services -> svc-cron
+    svc-cron -> legacy-services
+    init-services -> svc-plex
+    svc-plex -> legacy-services
+  }
+  Base Images: {
+    "baseimage-ubuntu:resolute"
+  }
+  "plex:latest" <- Base Images
+# changelog
+changelogs:
+  - {date: "06.07.26:", desc: "Rebase to Ubuntu Resolute."}
+  - {date: "15.03.26:", desc: "Allow TMPDIR to be changed to better support read-only containers"}
+  - {date: "15.03.26:", desc: "Fix initial claim setup on non-root containers"}
+  - {date: "04.11.24:", desc: "Add Nvidia capability needed for h265"}
+  - {date: "18.07.24:", desc: "Rebase to Ubuntu Noble."}
+  - {date: "12.02.24:", desc: "Use universal hardware acceleration blurb"}
+  - {date: "09.01.24:", desc: "Set ownership on TranscoderTempDirectory when it's been saved in Preferences."}
+  - {date: "16.08.23:", desc: "Install unrar from [linuxserver repo](https://github.com/linuxserver/docker-unrar)."}
+  - {date: "03.07.23:", desc: "Deprecate armhf. As announced [here](https://www.linuxserver.io/blog/a-farewell-to-arm-hf)"}
+  - {date: "16.10.22:", desc: "Rebase to jammy. Update to s6v3. Remove opencl packages (bundled with plex)."}
+  - {date: "18.07.22:", desc: "Pin all opencl related driver packages."}
+  - {date: "16.05.22:", desc: "Pin opencl version."}
+  - {date: "04.03.22:", desc: "Increase verbosity of video device permissions fix, attempt to fix missing group rw."}
+  - {date: "25.12.21:", desc: "Install Intel drivers from the official repo."}
+  - {date: "20.01.21:", desc: "Deprecate `UMASK_SET` in favor of UMASK in baseimage, see above for more information."}
+  - {date: "10.12.20:", desc: "Add latest Intel Compute packages from github repo for opencl support on latest gen igpu."}
+  - {date: "23.11.20:", desc: "Add Bionic branch make Focal default."}
+  - {date: "03.05.20:", desc: "Update exposed ports and example docs for bridge mode."}
+  - {date: "23.03.20:", desc: "Remove udev hack (no longer needed), suppress uuid error in log during first start."}
+  - {date: "04.12.19:", desc: "Add variable for setting PLEX_CLAIM. Remove `/transcode` volume mapping as it is now set via plex gui and defaults to a location under `/config`."}
+  - {date: "06.08.19:", desc: "Add variable for setting UMASK."}
+  - {date: "10.07.19:", desc: "Fix permissions for tuner (/dev/dvb) devices."}
+  - {date: "20.05.19:", desc: "Bugfix do not allow Root group for Intel QuickSync ownership rules."}
+  - {date: "23.03.19:", desc: "Switching to new Base images, shift to arm32v7 tag."}
+  - {date: "22.03.19:", desc: "Fix update logic for `VERSION=public`."}
+  - {date: "14.03.19:", desc: "Switch to new api endpoints, enable beta (plex pass) updates for armhf and aarch64."}
+  - {date: "15.02.19:", desc: "Clean up plex pid after unclean stop."}
+  - {date: "11.02.19:", desc: "Fix nvidia variables, add device variables."}
+  - {date: "16.01.19:", desc: "Add pipeline logic, multi arch, and HW transcoding configuration; remove avahi service."}
+  - {date: "07.09.18:", desc: "Rebase to ubuntu bionic, add udev package."}
+  - {date: "09.12.17:", desc: "Fix continuation lines."}
+  - {date: "12.07.17:", desc: "Add inspect commands to README, move to jenkins build and push."}
+  - {date: "28.05.17:", desc: "Add unrar package as per requests, for subzero plugin."}
+  - {date: "11.01.17:", desc: "Use Plex environment variables from pms docker, change abc home folder to /app to alleviate usermod chowning library"}
+  - {date: "03.01.17:", desc: "Use case insensitive version variable matching rather than export and make lowercase."}
+  - {date: "17.10.16:", desc: "Allow use of uppercase version variable"}
+  - {date: "01.10.16:", desc: "Add TZ info to README."}
+  - {date: "09.09.16:", desc: "Add layer badges to README."}
+  - {date: "27.08.16:", desc: "Add badges to README."}
+  - {date: "22.08.16:", desc: "Rebased to xenial and s6 overlay"}
+  - {date: "07.04.16:", desc: "removed `/transcode` volume support (upstream Plex change) and modified PlexPass download method to prevent unauthorised usage of paid PMS"}
+  - {date: "24.09.15:", desc: "added optional support for volume transcoding (/transcode), and various typo fixes."}
+  - {date: "17.09.15:", desc: "Changed to run chmod only once"}
+  - {date: "19.09.15:", desc: "Plex updated their download servers from http to https"}
+  - {date: "28.08.15:", desc: "Removed plexpass from routine, and now uses VERSION as a combination fix."}
+  - {date: "18.07.15:", desc: "Moved autoupdate to be hosted by linuxserver.io and implemented bugfix thanks to ljm42."}
+  - {date: "09.07.15:", desc: "Now with ability to pick static version number."}
+  - {date: "08.07.15:", desc: "Now with autoupdates. (Hosted by fanart.tv)"}
+  - {date: "03.07.15:", desc: "Fixed a mistake that allowed plex to run as user plex rather than abc (99:100). Thanks to double16 for spotting this."}

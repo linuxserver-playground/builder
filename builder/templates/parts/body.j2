@@ -1,0 +1,69 @@
+{% if deprecation.status %}
+{% include "parts/deprecation.j2" %}
+
+{% endif %}
+# [{{ org }}/{{ name }}]({{ repo_url }})
+
+{% include "parts/project_badges.j2" %}
+
+{{ summary | noter(flavour) | trim }}
+{% if extras %}
+
+{% for item in extras %}
+* {{ item }}
+{% endfor %}
+{% endif %}
+{% if logo %}
+
+[![{{ name }}]({{ logo }})]({{ project_url }})
+{% endif %}
+
+{% include "parts/supported_architectures.j2" %}
+{% if tags %}
+
+{% include "parts/version_tags.j2" %}
+{% endif %}
+{% if setup or has_notices or selkies %}
+
+{% include "parts/application_setup.j2" %}
+{% endif %}
+{% if rt.readonly.supported %}
+
+{% include "parts/readonly.j2" %}
+{% endif %}
+{% if rt.nonroot.supported %}
+
+{% include "parts/nonroot.j2" %}
+{% endif %}
+
+{% include "parts/usage.j2" %}
+
+{% if flavour == "mkdocs" %}
+{% include "parts/parameters_mkdocs.j2" %}
+{% else %}
+{% include "parts/parameters_gfm.j2" %}
+{% endif %}
+
+{% include "parts/env_var_files.j2" %}
+
+{% include "parts/umask.j2" %}
+{% if optional_parameters %}
+
+## Optional Parameters
+
+{{ optional_parameters | noter(flavour) | trim }}
+{% endif %}
+{% if rt.common_env %}
+
+{% include "parts/user_group_identifiers.j2" %}
+{% endif %}
+
+{% include "parts/docker_mods.j2" %}
+
+{% include "parts/support_info.j2" %}
+
+{% include "parts/updating_info.j2" %}
+
+{% include "parts/building_locally.j2" %}
+
+{% include "parts/versions.j2" %}

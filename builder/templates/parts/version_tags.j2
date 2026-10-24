@@ -1,0 +1,9 @@
+## Version Tags
+
+This image provides various versions that are available via tags. Please read the descriptions carefully and exercise caution when using unstable or development tags.
+
+| Tag | Available | Description |
+| :----: | :----: |--- |
+{% for item in tags %}
+| {{ item.tag }} | {% if item.deprecated %}❌{% else %}✅{% endif %} | {{ item.description }} |
+{% endfor %}

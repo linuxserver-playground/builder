@@ -1,0 +1,145 @@
+---
+
+# project information
+project_name: jellyfin
+project_url: "https://github.com/jellyfin/jellyfin"
+project_logo: "https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/jellyfin-logo.png"
+project_lsio_github_repo_url: "https://github.com/linuxserver/docker-{{ project_name }}"
+project_categories: "Media Servers,Music,Audiobooks"
+project_blurb: "[{{ project_name|capitalize }}]({{ project_url }}) is a Free Software Media System that puts you in control of managing and streaming your media. It is an alternative to the proprietary Emby and Plex, to provide media from a dedicated server to end-user devices via multiple apps. Jellyfin is descended from Emby's 3.5.2 release and ported to the .NET Core framework to enable full cross-platform support. There are no strings attached, no premium licenses or features, and no hidden agendas: just a team who want to build something better and work together to achieve it."
+# supported architectures
+available_architectures:
+  - {arch: "{{ arch_x86_64 }}", tag: "amd64-latest"}
+  - {arch: "{{ arch_arm64 }}", tag: "arm64v8-latest"}
+# development version
+development_versions: true
+development_versions_items:
+  - {tag: "latest", desc: "Stable Jellyfin releases"}
+  - {tag: "nightly", desc: "Nightly Jellyfin releases"}
+# container parameters
+common_param_env_vars_enabled: true #PGID, PUID, etc
+param_container_name: "{{ project_name }}"
+param_usage_include_vols: true
+param_volumes:
+  - {vol_path: "/config", vol_host_path: "/path/to/{{ project_name }}/library", desc: "Jellyfin data storage location. *This can grow very large, 50gb+ is likely for a large collection.*"}
+  - {vol_path: "/data/tvshows", vol_host_path: "/path/to/tvseries", desc: "Media goes here. Add as many as needed e.g. `/data/movies`, `/data/tv`, etc."}
+  - {vol_path: "/data/movies", vol_host_path: "/path/to/movies", desc: "Media goes here. Add as many as needed e.g. `/data/movies`, `/data/tv`, etc."}
+param_usage_include_ports: true
+param_ports:
+  - {external_port: "8096", internal_port: "8096", port_desc: "Http webUI."}
+param_usage_include_env: true
+# optional container parameters
+opt_param_usage_include_env: true
+opt_param_env_vars:
+  - {env_var: "JELLYFIN_PublishedServerUrl", env_value: "http://192.168.0.5", desc: "Set the autodiscovery response domain or IP address, include http(s)://."}
+opt_param_usage_include_ports: true
+opt_param_ports:
+  - {external_port: "8920", internal_port: "8920", port_desc: "Optional - Https webUI (you need to set up your own certificate)."}
+  - {external_port: "7359", internal_port: "7359/udp", port_desc: "Optional - Allows clients to discover Jellyfin on the local network."}
+  - {external_port: "1900", internal_port: "1900/udp", port_desc: "Optional - Service discovery used by DNLA and clients."}
+optional_parameters: |
+  The [official documentation for ports](https://jellyfin.org/docs/general/networking/index.html) has additional ports that can provide auto discovery.
+
+  Service Discovery (`1900/udp`) - Since client auto-discover would break if this option were configurable, you cannot change this in the settings at this time. DLNA also uses this port and is required to be in the local subnet.
+
+  Client Discovery (`7359/udp`) - Allows clients to discover Jellyfin on the local network. A broadcast message to this port with "Who is Jellyfin Server?" will get a JSON response that includes the server address, ID, and name.
+
+  ```
+    -p 7359:7359/udp \
+    -p 1900:1900/udp \
+  ```
+
+  The [official documentation for environmentals](https://jellyfin.org/docs/general/administration/configuration.html) has additional environmentals that can provide additional configurability such as migrating to the native Jellyfin image.
+# application setup block
+app_setup_block_enabled: true
+app_setup_block: |
+  Webui can be found at `http://<your-ip>:8096`
+
+  More information can be found on the official documentation [here](https://jellyfin.org/docs/general/quick-start.html).
+
+  ### Hardware Acceleration Enhancements
+
+  This section lists the enhancements we have made for hardware acceleration in this image specifically.
+
+  ### Intel
+
+  To enable the OpenCL based DV, HDR10 and HLG tone-mapping, please refer to the OpenCL-Intel mod from here:
+
+  https://mods.linuxserver.io/?mod=jellyfin
+
+  And follow this guide even if you are using iGPU: https://jellyfin.org/docs/general/administration/hardware-acceleration/intel/#configure-and-verify-lp-mode-on-linux
+readme_hwaccel: true
+unraid_template_sync: false
+# init diagram
+init_diagram: |
+  "jellyfin:latest": {
+    docker-mods
+    base {
+      fix-attr +\nlegacy cont-init
+    }
+    docker-mods -> base
+    legacy-services
+    custom services
+    init-services -> legacy-services
+    init-services -> custom services
+    custom services -> legacy-services
+    legacy-services -> ci-service-check
+    init-migrations -> init-adduser
+    init-os-end -> init-config
+    init-config -> init-config-end
+    init-crontab-config -> init-config-end
+    init-jellyfin-config -> init-config-end
+    init-config -> init-crontab-config
+    init-mods-end -> init-custom-files
+    init-adduser -> init-device-perms
+    base -> init-envfile
+    init-config -> init-jellyfin-config
+    base -> init-migrations
+    init-config-end -> init-mods
+    init-mods-package-install -> init-mods-end
+    init-mods -> init-mods-package-install
+    init-adduser -> init-os-end
+    init-device-perms -> init-os-end
+    init-envfile -> init-os-end
+    init-custom-files -> init-services
+    init-services -> svc-cron
+    svc-cron -> legacy-services
+    init-services -> svc-jellyfin
+    svc-jellyfin -> legacy-services
+  }
+  Base Images: {
+    "baseimage-ubuntu:resolute"
+  }
+  "jellyfin:latest" <- Base Images
+# changelog
+changelogs:
+  - {date: "14.07.26:", desc: "Rebase to Ubuntu Resolute."}
+  - {date: "02.03.26:", desc: "Add support for IPv6 OOTB."}
+  - {date: "20.10.25:", desc: "Add libjemalloc2 as runtime dep."}
+  - {date: "06.10.24:", desc: "Fix fontconfig cache path."}
+  - {date: "13.08.24:", desc: "Rebase to Ubuntu Noble."}
+  - {date: "01.05.24:", desc: "Increase verbosity of device permissions fixing."}
+  - {date: "12.02.24:", desc: "Use universal hardware acceleration blurb."}
+  - {date: "12.09.23:", desc: "Take ownership of plugin directories."}
+  - {date: "04.07.23:", desc: "Deprecate armhf. As announced [here](https://www.linuxserver.io/blog/a-farewell-to-arm-hf)"}
+  - {date: "07.12.22:", desc: "Rebase master to Jammy, migrate to s6v3."}
+  - {date: "11.06.22:", desc: "Switch to upstream repo's ffmpeg5 build."}
+  - {date: "05.01.22:", desc: "Specify Intel iHD driver versions to avoid mismatched libva errors."}
+  - {date: "25.12.21:", desc: "Fix video device group perms error message."}
+  - {date: "10.12.21:", desc: "Rework readme, disable template sync."}
+  - {date: "22.09.21:", desc: "Pull only the server, web and ffmpeg packages instead of the wrapper."}
+  - {date: "23.06.21:", desc: "Add log message if device permissions are incorrect. Pin jellyfin dependency versions to prevent upstream apt repo issues. Deprecate the `bionic` tag."}
+  - {date: "21.05.21:", desc: "Add nvidia.icd file to fix missing tonemapping using Nvidia HW."}
+  - {date: "20.01.21:", desc: "Add Jellyfin Binary Environmentals"}
+  - {date: "20.01.21:", desc: "Deprecate `UMASK_SET` in favor of UMASK in baseimage, see above for more information."}
+  - {date: "23.11.20:", desc: "Rebase to Focal, branch off Bionic."}
+  - {date: "22.07.20:", desc: "Ingest releases from Jellyfin repo."}
+  - {date: "28.04.20:", desc: "Replace MMAL/OMX dependency device `/dev/vc-mem` with `/dev/vcsm` as the former was not sufficient for raspbian."}
+  - {date: "11.04.20:", desc: "Enable hw decode (mmal) on Raspberry Pi, update readme instructions, add donation info, create missing default transcodes folder."}
+  - {date: "11.03.20:", desc: "Add Pi V4L2 support, remove optional transcode mapping (location is selected in the gui, defaults to path under `/config`)."}
+  - {date: "30.01.20:", desc: "Add nightly tag."}
+  - {date: "09.01.20:", desc: "Add Pi OpenMax support."}
+  - {date: "02.10.19:", desc: "Improve permission fixing for render & dvb devices."}
+  - {date: "31.07.19:", desc: "Add AMD drivers for vaapi support on x86."}
+  - {date: "13.06.19:", desc: "Add Intel drivers for vaapi support on x86."}
+  - {date: "07.06.19:", desc: "Initial release."}

@@ -1,0 +1,53 @@
+## Parameters
+
+Containers are configured using parameters passed at runtime (such as those above). These parameters are separated by a colon and indicate `<external>:<internal>` respectively. For example, `-p 8080:80` would expose port `80` from inside the container to be accessible from the host's IP on port `8080` outside the container.
+
+| Parameter | Function |
+| :----: | --- |
+{% if rt.hostname %}
+| `--hostname=` | {{ rt.hostname.description }} |
+{% endif %}
+{% if rt.mac_address %}
+| `--mac-address=` | {{ rt.mac_address.description }} |
+{% endif %}
+{% if rt.network %}
+| `--net={{ rt.network.mode }}` | {{ rt.network.description }} |
+{% endif %}
+{% for item in rt.ports %}
+| `-p {{ item.external }}:{{ item.internal }}` | {{ item.description }} |
+{% endfor %}
+{% if rt.common_env %}
+{% for item in rt.common_env_vars %}
+| `-e {{ item.name }}={{ item.value }}` | {{ item.description }} |
+{% endfor %}
+{% endif %}
+{% for item in rt.env %}
+| `-e {{ item.name }}={{ item.value }}` | {{ item.description }} |
+{% endfor %}
+{% for item in rt.volumes %}
+| `-v {{ item.path }}` | {{ item.description }} |
+{% endfor %}
+{% for item in rt.devices %}
+| `--device {{ item.path }}` | {{ item.description }} |
+{% endfor %}
+{% for item in rt.custom %}
+| `--{{ item.flag }}=` | {{ item.description }} |
+{% endfor %}
+{% for item in rt.security_opt %}
+| `--security-opt {{ item.run }}` | {{ item.description }} |
+{% endfor %}
+{% if rt.readonly.supported %}
+| `--read-only=true` | Run container with a read-only filesystem. Please [read the docs]({{ docs_url }}/misc/read-only/). |
+{% endif %}
+{% for item in rt.cap_add %}
+| `--cap-add={{ item.cap }}` | {{ item.description }} |
+{% endfor %}
+{% if rt.nonroot.supported %}
+| `--user=1000:1000` | Run container with a non-root user. Please [read the docs]({{ docs_url }}/misc/non-root/). |
+{% endif %}
+{% if rt.cap_add or rt.uses_sysctl %}
+
+### Portainer notice
+
+This image utilises `cap_add` or `sysctl` to work properly. This is not implemented properly in some versions of Portainer, thus this image may not work if deployed through Portainer.
+{% endif %}

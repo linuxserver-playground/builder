@@ -1,0 +1,25 @@
+## Support Info
+
+* Shell access whilst the container is running:
+
+    ```bash
+    docker exec -it {{ rt.container_name }} /bin/bash
+    ```
+
+* To monitor the logs of the container in realtime:
+
+    ```bash
+    docker logs -f {{ rt.container_name }}
+    ```
+
+* Container version number:
+
+    ```bash
+    docker inspect -f {% raw %}'{{ index .Config.Labels "build_version" }}'{% endraw %} {{ rt.container_name }}
+    ```
+
+* Image version number:
+
+    ```bash
+    docker inspect -f {% raw %}'{{ index .Config.Labels "build_version" }}'{% endraw %} {{ image_ref }}
+    ```

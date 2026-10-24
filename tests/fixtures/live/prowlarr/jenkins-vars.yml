@@ -1,0 +1,30 @@
+---
+# jenkins variables
+project_name: docker-prowlarr
+external_type: na
+custom_version_command: curl -sL "https://prowlarr.servarr.com/v1/update/master/changes?runtime=netcore&os=linuxmusl" | jq -r '.[0].version'
+custom_release_notes_command: |-
+  curl -H "Authorization: token ${GITHUB_TOKEN}" -s https://api.github.com/repos/prowlarr/prowlarr/releases/tags/v${EXT_RELEASE} | jq -r '. |.body' | sed -e 's|\\b\\([0-9a-fA-F]\\{40\\}\\)\\b|[\\1](https://github.com/Prowlarr/Prowlarr/commit/\\1)|g' | sed -e 's|\\[\\([0-9a-fA-F]\\{6\\}\\)[0-9a-fA-F]\\{34\\}\\]|[\\1]|g' > releasebody.json
+release_type: stable
+release_tag: latest
+ls_branch: main
+repo_vars:
+  - BUILD_VERSION_ARG = 'PROWLARR_RELEASE'
+  - LS_USER = 'linuxserver'
+  - LS_REPO = 'docker-prowlarr'
+  - CONTAINER_NAME = 'prowlarr'
+  - DOCKERHUB_IMAGE = 'linuxserver/prowlarr'
+  - DEV_DOCKERHUB_IMAGE = 'lsiodev/prowlarr'
+  - PR_DOCKERHUB_IMAGE = 'lspipepr/prowlarr'
+  - DIST_IMAGE = 'alpine'
+  - MULTIARCH='true'
+  - CI='true'
+  - CI_WEB='true'
+  - CI_PORT='9696'
+  - CI_SSL='false'
+  - CI_DELAY='240'
+  - CI_DOCKERENV=''
+  - CI_AUTH=''
+  - CI_WEBPATH='/system/status'
+sponsor_links:
+  - { name: "Prowlarr", url: "https://opencollective.com/prowlarr" }

@@ -1,0 +1,31 @@
+---
+
+# jenkins variables
+project_name: docker-sonarr
+external_type: na
+custom_version_command: "curl -sX GET http://services.sonarr.tv/v1/releases | jq -r '.[] | select(.releaseChannel==\"v4-stable\") | .version'"
+custom_release_notes_command: |-
+  curl -H "Authorization: token ${GITHUB_TOKEN}" -s https://api.github.com/repos/sonarr/sonarr/releases/tags/v${EXT_RELEASE} | jq -r '. |.body' > releasebody.json
+release_type: stable
+release_tag: latest
+ls_branch: master
+repo_vars:
+  - BUILD_VERSION_ARG = 'SONARR_VERSION'
+  - LS_USER = 'linuxserver'
+  - LS_REPO = 'docker-sonarr'
+  - CONTAINER_NAME = 'sonarr'
+  - DOCKERHUB_IMAGE = 'linuxserver/sonarr'
+  - DEV_DOCKERHUB_IMAGE = 'lsiodev/sonarr'
+  - PR_DOCKERHUB_IMAGE = 'lspipepr/sonarr'
+  - DIST_IMAGE = 'ubuntu'
+  - MULTIARCH='true'
+  - CI='true'
+  - CI_WEB='true'
+  - CI_PORT='8989'
+  - CI_SSL='false'
+  - CI_DELAY='240'
+  - CI_DOCKERENV=''
+  - CI_AUTH=''
+  - CI_WEBPATH='/system/status'
+sponsor_links:
+  - { name: "Sonarr", url: "https://sonarr.tv/donate" }

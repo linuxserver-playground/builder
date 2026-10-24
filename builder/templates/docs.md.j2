@@ -1,0 +1,15 @@
+{% set flavour = "mkdocs" %}
+---
+title: {{ name }}
+tags:
+{% for tag in docs.categories %}
+    - {{ tag }}
+{% endfor %}
+description: {{ summary_oneline | noter(flavour) | yaml_string }}
+---
+{% include "parts/do_not_edit.j2" %}
+{% if custom_readme %}
+{{ custom_readme | trim }}
+{% else %}
+{% include "parts/body.j2" %}
+{% endif %}

@@ -1,0 +1,21 @@
+{% if rt.hostname %}
+| `--hostname=` | {{ rt.hostname.description }} |
+{% endif %}
+{% if rt.mac_address %}
+| `--mac-address=` | {{ rt.mac_address.description }} |
+{% endif %}
+{% for item in rt.custom %}
+| `--{{ item.flag }}=` | {{ item.description }} |
+{% endfor %}
+{% for item in rt.security_opt %}
+| `--security-opt {{ item.run }}` | {{ item.description }} |
+{% endfor %}
+{% if rt.readonly.supported %}
+| `--read-only=true` | Run container with a read-only filesystem. Please [read the docs]({{ docs_url }}/misc/read-only/). |
+{% endif %}
+{% for item in rt.cap_add %}
+| `--cap-add={{ item.cap }}` | {{ item.description }} |
+{% endfor %}
+{% if rt.nonroot.supported %}
+| `--user=1000:1000` | Run container with a non-root user. Please [read the docs]({{ docs_url }}/misc/non-root/). |
+{% endif %}

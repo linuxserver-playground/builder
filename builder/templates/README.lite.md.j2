@@ -1,0 +1,21 @@
+{% set flavour = "gfm" %}
+{% if deprecation.status %}
+{% include "parts/deprecation.j2" %}
+
+{% endif %}
+# [{{ org }}/{{ name }}]({{ repo_url }})
+
+## This readme has been truncated from the full version found [HERE]({{ repo_url }})
+
+{{ summary | noter(flavour) | trim }}
+{% if setup %}
+
+## Application Setup
+
+{{ setup | noter(flavour) | trim }}
+{% endif %}
+
+## Usage
+
+```bash
+{{ run_snippet }}```

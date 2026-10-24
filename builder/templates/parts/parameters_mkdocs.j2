@@ -1,0 +1,64 @@
+## Parameters
+
+Containers are configured using parameters passed at runtime (such as those above). These parameters are separated by a colon and indicate `<external>:<internal>` respectively. For example, `-p 8080:80` would expose port `80` from inside the container to be accessible from the host's IP on port `8080` outside the container.
+
+### Ports (`-p`)
+
+| Parameter | Function |
+| :----: | --- |
+{% for item in rt.ports %}
+| `{{ item.external }}:{{ item.internal }}` | {{ item.description }} |
+{% endfor %}
+{% if rt.network %}
+
+#### Networking (`--net`)
+
+| Parameter | Function |
+| :-----:   | --- |
+| `--net={{ rt.network.mode }}` | {{ rt.network.description }} |
+{% endif %}
+
+### Environment Variables (`-e`)
+
+| Env | Function |
+| :----: | --- |
+{% if rt.common_env %}
+{% for item in rt.common_env_vars %}
+| `{{ item.name }}={{ item.value }}` | {{ item.description }} |
+{% endfor %}
+{% endif %}
+{% for item in rt.env %}
+| `{{ item.name }}={{ item.value }}` | {{ item.description }} |
+{% endfor %}
+
+### Volume Mappings (`-v`)
+
+| Volume | Function |
+| :----: | --- |
+{% for item in rt.volumes %}
+| `{{ item.path }}` | {{ item.description }} |
+{% endfor %}
+{% if rt.devices %}
+
+### Device Mappings (`--device`)
+
+| Parameter | Function |
+| :-----:   | --- |
+{% for item in rt.devices %}
+| `{{ item.path }}` | {{ item.description }} |
+{% endfor %}
+{% endif %}
+{% if rt.hostname or rt.mac_address or rt.custom or rt.security_opt or rt.readonly.supported or rt.cap_add or rt.nonroot.supported %}
+
+#### Miscellaneous Options
+
+| Parameter | Function |
+| :-----:   | --- |
+{% include "parts/misc_rows.j2" %}
+{% endif %}
+{% if rt.cap_add or rt.uses_sysctl %}
+
+### Portainer notice
+
+{{ "This image utilises `cap_add` or `sysctl` to work properly. This is not implemented properly in some versions of Portainer, thus this image may not work if deployed through Portainer." | admonition(flavour, "warning") }}
+{% endif %}
