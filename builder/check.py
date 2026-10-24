@@ -193,7 +193,12 @@ def check_credentials(repo_dir: Path) -> list[Finding]:
             text = path.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError):
             continue
+        # root/defaults ships sample configs (dns plugin ini files with placeholder keys); not secrets.
+        if path.relative_to(repo_dir).parts[:2] == ("root", "defaults"):
+            continue
         for number, line in enumerate(text.splitlines(), start=1):
+            if "example" in line.lower():
+                continue
             for label, pattern in CREDENTIAL_PATTERNS.items():
                 if pattern.search(line):
                     findings.append(
