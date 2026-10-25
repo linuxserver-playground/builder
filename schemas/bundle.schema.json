@@ -199,8 +199,36 @@
         "empty": { "type": "boolean" }
       }
     },
+    "file_tree": {
+      "type": "object",
+      "description": "files.<arch>.json.gz: the root filesystem as dumper writes it (linuxserver-playground/dumper, `dumper files`), run inside the image before init.",
+      "additionalProperties": false,
+      "required": ["format", "tree"],
+      "properties": {
+        "format": { "const": "lsio-files/1" },
+        "tree": { "$ref": "#/$defs/file_node" }
+      }
+    },
+    "file_node": {
+      "type": "object",
+      "description": "One entry. Short keys, defaults left out. A directory has `c`, a symlink `l`, a hardlink `h`, a special file `t`; anything else is a regular file.",
+      "additionalProperties": false,
+      "required": ["n"],
+      "properties": {
+        "n": { "type": "string", "description": "Name; the root's is empty." },
+        "c": { "type": "array", "items": { "$ref": "#/$defs/file_node" }, "description": "Children, sorted bytewise by name." },
+        "s": { "type": "integer", "minimum": 1, "description": "Size in bytes of a regular file; left out when 0." },
+        "l": { "type": "string", "description": "Symlink target as stored." },
+        "h": { "type": "string", "description": "Hardlink: absolute path of the first entry with the same inode, which carries the size." },
+        "t": { "enum": ["char", "block", "fifo", "socket"] },
+        "m": { "type": "integer", "minimum": 0, "maximum": 4095, "description": "Permission bits (st_mode & 0o7777); left out when 0o755 for directories and 0o644 otherwise, never written for symlinks." },
+        "u": { "type": "integer", "minimum": 1, "description": "uid, left out when 0." },
+        "g": { "type": "integer", "minimum": 1, "description": "gid, left out when 0." }
+      }
+    },
     "file_entry": {
       "type": "object",
+      "description": "Legacy files.<arch>.json.gz entry (an array of these), written by ci before dumper; still read for older releases.",
       "additionalProperties": false,
       "required": ["path", "layer", "type"],
       "properties": {

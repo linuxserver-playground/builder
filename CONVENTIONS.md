@@ -137,12 +137,17 @@ A live release attaches these assets to its GitHub Release. Names are fixed; `<a
 | Asset | Schema | Notes |
 | --- | --- | --- |
 | `build.json` | `schemas/bundle.schema.json` | The record. Everything the hub needs that is small. |
-| `packages.<arch>.json.gz` | syft JSON | `SYFT_FILE_METADATA_SELECTION=all`, digests sha256 |
+| `packages.<arch>.json.gz` | syft JSON | Packages only: `SYFT_FILE_METADATA_SELECTION=none`, `+sbom-cataloger`, trimmed of file records, per-package file lists and file relationships |
 | `layers.<arch>.json` | in `bundle.schema.json` `$defs/layer` (array) | From the manifest, `docker history` and provenance |
-| `files.<arch>.json.gz` | in `bundle.schema.json` `$defs/file_entry` (array) | Hardlinks deduplicated by (layer, digest) |
+| `files.<arch>.json.gz` | in `bundle.schema.json` `$defs/file_tree` | `dumper files` inside the image: a nested tree with sizes, link targets, permissions and owners; hardlinks exact from inodes |
 | `test.<arch>.json` | `schemas/test-report.schema.json` | One per arch |
 | `test.<arch>.tar.gz` | | HTML report, screenshots, container log, shellcheck XML |
 | `package_versions.<arch>.txt` | text | syft table, the human-readable list |
+
+The image itself carries the same packages-only SBOM as SPDX 2.3 (`sbom.<arch>.spdx.json` from the ci run),
+attached by the publish job in BuildKit's attestation layout next to the provenance, so
+`docker buildx imagetools inspect --format '{{json .SBOM}}'` and Docker tooling read it. BuildKit's own
+`--sbom` scan is off: it records every file and outgrew the 80 MiB attestation limit on desktop images.
 
 `build.json` is also written to the workflow job summary and sent to the control plane as a
 `build.summary` event (`schemas/control-event.schema.json`). PR and dev builds produce the same bundle
