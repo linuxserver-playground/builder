@@ -1,0 +1,78 @@
+# Generated for every docker-mods branch; identical on each. Do not edit on a mod branch.
+# Every build runs linuxserver-playground/workflows mod-build.yml@v1. The mod's identity comes from mod.yml
+# (name, target, platforms); the shared workflow publishes only when the branch is named <target>-<name>.
+name: Build
+
+on:
+  push:
+    branches: ["**"]
+    tags-ignore: ["**"]
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      mod_version:
+        description: Optional MOD_VERSION build arg, also published as an extra tag
+        type: string
+        default: ""
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  manifest:
+    name: Read mod.yml
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      name: ${{ steps.read.outputs.name }}
+      target: ${{ steps.read.outputs.target }}
+      multi_arch: ${{ steps.read.outputs.multi_arch }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Read name, target and platforms
+        id: read
+        run: |
+          set -euo pipefail
+          python3 -c 'import yaml' 2>/dev/null || python3 -m pip install --quiet --user pyyaml
+          python3 - <<'PY' | tee -a "${GITHUB_OUTPUT}"
+          import re, sys, yaml
+          m = yaml.safe_load(open("mod.yml"))
+          name, target = str(m["name"]), str(m["target"])
+          for v in (name, target):
+              if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", v):
+                  sys.exit(f"::error file=mod.yml::invalid name/target {v!r}")
+          print(f"name={name}")
+          print(f"target={target}")
+          print("multi_arch=" + str("arm64" in m.get("platforms", ["amd64", "arm64"])).lower())
+          PY
+
+      - name: Check s6 scripts are executable
+        run: |
+          set -euo pipefail
+          bad=$(git ls-files -s root | awk '$1 != "100755" && $4 ~ /\/(run|finish|check)$/ { print $4 }')
+          if [[ -n "${bad}" ]]; then
+            echo "::error::not executable (chmod +x and commit): ${bad//$'\n'/ }"
+            exit 1
+          fi
+
+  build:
+    name: Mod build
+    needs: manifest
+    uses: linuxserver-playground/workflows/.github/workflows/mod-build.yml@v1
+    permissions:
+      contents: read
+      packages: write
+      pull-requests: write
+    with:
+      name: ${{ needs.manifest.outputs.name }}
+      target: ${{ needs.manifest.outputs.target }}
+      multi_arch: ${{ needs.manifest.outputs.multi_arch == 'true' }}
+      mod_version: ${{ github.event.inputs.mod_version || '' }}
+      workflows_ref: v1

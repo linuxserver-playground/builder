@@ -38,6 +38,12 @@ def _parser() -> argparse.ArgumentParser:
     migrate.add_argument("repo_dir", nargs="?", default=".")
     migrate.add_argument("--out", default="image.yml", help="output path relative to repo_dir ('-' for stdout)")
 
+    render_mod = sub.add_parser(
+        "render-mod", help="write a docker-mods branch's README.md, AGENTS.md and build workflow from its mod.yml"
+    )
+    render_mod.add_argument("repo_dir", nargs="?", default=".")
+    render_mod.add_argument("--check", action="store_true", help="exit 1 when a generated file differs instead")
+
     snippets = sub.add_parser("snippets", help="print the compose or docker run snippet")
     snippets.add_argument("repo_dir", nargs="?", default=".")
     snippets.add_argument("--format", choices=["compose", "run", "json"], default="compose")
@@ -94,6 +100,35 @@ def cmd_migrate(repo_dir: Path, out: str) -> int:
     return 0
 
 
+def cmd_render_mod(repo_dir: Path, settings: Settings, check: bool) -> int:
+    from contracts import ContractError, load_yaml, validate
+
+    from .mods import render_mod
+
+    manifest_path = repo_dir / "mod.yml"
+    try:
+        mod = load_yaml(manifest_path)
+        validate("mod", mod)
+    except (OSError, ContractError) as exc:
+        print(f"{manifest_path}: {exc}", file=sys.stderr)
+        return 1
+    stale = []
+    for rel, content in render_mod(mod, settings).items():
+        target = repo_dir / rel
+        current = target.read_text(encoding="utf-8") if target.is_file() else None
+        if current == content:
+            continue
+        if check:
+            stale.append(rel)
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content, encoding="utf-8")
+        print(f"wrote {rel}")
+    for rel in stale:
+        print(f"{rel}: differs from mod.yml (run builder render-mod)", file=sys.stderr)
+    return 1 if stale else 0
+
+
 def cmd_snippets(repo_dir: Path, settings: Settings, fmt: str, required_only: bool) -> int:
     from . import snippets
 
@@ -116,6 +151,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return cmd_check(repo_dir, settings, args.drift)
         if args.command == "render":
             return cmd_render(repo_dir, settings, args.only, args.all)
+        if args.command == "render-mod":
+            return cmd_render_mod(repo_dir, settings, args.check)
         if args.command == "migrate":
             return cmd_migrate(repo_dir, args.out)
         return cmd_snippets(repo_dir, settings, args.format, args.required_only)

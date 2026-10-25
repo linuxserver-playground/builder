@@ -15,6 +15,7 @@
     "maintainers": { "type": "array", "minItems": 1, "items": { "type": "string", "description": "GitHub login" } },
     "platforms": { "type": "array", "items": { "enum": ["amd64", "arm64"] }, "default": ["amd64", "arm64"] },
     "bases": { "type": "array", "items": { "enum": ["alpine", "ubuntu", "debian", "fedora", "arch", "el"] }, "description": "Base families the mod handles; universal mods usually list alpine and ubuntu." },
+    "images": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" }, "description": "Images the mod is recommended for besides its target, by image name. A universal mod lists the images where it is useful; the hub links the mod from those images' pages and run examples." },
     "env": {
       "type": "array",
       "items": {
