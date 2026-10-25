@@ -28,6 +28,7 @@ change that looks like an improvement in isolation is often wrong here.
 | `package_versions.txt` | no | Written by the build on the live branch. |
 | `README.md`, `AGENTS.md`, `LICENSE` | no | Generated from `image.yml`. |
 | `.github/workflows/build.yml` | no | Generated; calls the shared workflow `linuxserver-playground/workflows`. |
+| `.github/workflows/pr-report.yml` | no | Generated; the trusted PR report (comment, fork image publishing, cleanup). |
 
 Do not add top-level files or tooling: no compose files, Makefiles, linters, extra workflows, CHANGELOG.md.
 Live branches: master, develop. Each has its own `image.yml`; target the branch the change applies to.
@@ -67,5 +68,10 @@ Confirm `[ls.io-init] done.` appears, the app starts, and it survives a restart 
 - Disclose AI use in the description: which tool, for what.
 - One focused change per PR, smallest diff, no drive-by refactors or wording-only changes.
 - Commit subjects are short imperative sentences, no prefixes, no emoji, no trailers.
-- The PR build publishes to `ghcr.io/linuxserver-playground/untrusted-pr/sonarr:pr-<n>-<sha>` for reviewers only.
-- Builds of this PR fail if `README.md` or `AGENTS.md` were hand-edited or if `image.yml` does not validate.
+- The PR build publishes to `ghcr.io/linuxserver-playground/untrusted-pr/sonarr:pr-<n>-<sha>` for reviewers only. A PR
+  from a fork is built and tested the same way, but its image is published only after a maintainer adds the
+  `safe-to-publish` label, and every new push removes that label again.
+- The build report (tests per architecture, screenshot, package changes, container log) arrives as one comment
+  that is updated on every build.
+- Builds of this PR fail if a generated file (`README.md`, `AGENTS.md`, `LICENSE`, the workflows) was edited or if
+  `image.yml` does not validate. Generated files that are merely out of date are re-rendered after merge.

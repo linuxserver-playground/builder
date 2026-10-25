@@ -17,7 +17,7 @@ SHARED_TEMPLATES = Path(__file__).resolve().parent.parent / "templates"
 OUT_DIR = ".builder-out"
 
 # Files committed to the repo, in the order they are reported.
-REPO_FILES = ("README.md", "AGENTS.md", "LICENSE", ".github/workflows/build.yml")
+REPO_FILES = ("README.md", "AGENTS.md", "LICENSE", ".github/workflows/build.yml", ".github/workflows/pr-report.yml")
 # Files only written to .builder-out/ (consumed by the hub and the docs site).
 OUT_FILES = (f"{OUT_DIR}/docs.md", f"{OUT_DIR}/README.lite.md")
 ALL_FILES = REPO_FILES + OUT_FILES
@@ -54,6 +54,7 @@ def render_all(data: Json, settings: Settings | None = None) -> dict[str, str]:
         "AGENTS.md": env.get_template("agents/image.md.j2").render(ctx),
         "LICENSE": (PACKAGE_TEMPLATES / "LICENSE").read_text(encoding="utf-8"),
         ".github/workflows/build.yml": env.get_template("build.yml.j2").render(ctx),
+        ".github/workflows/pr-report.yml": env.get_template("pr-report.yml.j2").render(ctx),
         f"{OUT_DIR}/docs.md": env.get_template("docs.md.j2").render(ctx),
         f"{OUT_DIR}/README.lite.md": env.get_template("README.lite.md.j2").render(ctx),
     }

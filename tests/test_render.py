@@ -109,8 +109,18 @@ def test_workflow_is_the_fixed_text() -> None:
     # The shared workflow asks for write tokens; the caller must grant them or GitHub refuses to start.
     assert "      packages: write\n" in workflow
     assert "repository_dispatch:" in workflow
-    # Closed pull requests reach the shared workflow too: its cleanup job deletes the untrusted-pr images.
-    assert "  pull_request:\n    types: [opened, synchronize, reopened, closed]\n" in workflow
+    # Closed pull requests are the PR report's business (it deletes the untrusted-pr images), not a build.
+    assert "  pull_request:\n    types: [opened, synchronize, reopened]\n" in workflow
+
+
+def test_pr_report_workflow_is_trusted_by_construction() -> None:
+    workflow = render_all(_sonarr(), SETTINGS)[".github/workflows/pr-report.yml"]
+    assert "uses: linuxserver-playground/workflows/.github/workflows/pr-report.yml@v1" in workflow
+    assert "  workflow_run:\n    workflows: [Build]\n    types: [completed]\n" in workflow
+    assert "  pull_request_target:\n    types: [labeled, synchronize, closed]\n" in workflow
+    # Nothing in it may check out or run pull request code; the shared workflow only reads artifacts.
+    assert "checkout" not in workflow and "head.sha" not in workflow
+    assert "permissions: {}\n" in workflow and "      packages: write\n" in workflow
 
 
 def test_agents_md_context() -> None:
@@ -148,4 +158,10 @@ def test_optional_sections_follow_the_manifest() -> None:
 
 
 def test_repo_files_are_the_committed_ones() -> None:
-    assert REPO_FILES == ("README.md", "AGENTS.md", "LICENSE", ".github/workflows/build.yml")
+    assert REPO_FILES == (
+        "README.md",
+        "AGENTS.md",
+        "LICENSE",
+        ".github/workflows/build.yml",
+        ".github/workflows/pr-report.yml",
+    )
