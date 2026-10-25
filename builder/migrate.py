@@ -410,7 +410,10 @@ class Migrator:
             out["version_arg"] = version_arg
         elif version_arg:
             self.todo("build", "version_arg", f"BUILD_VERSION_ARG {version_arg!r} is not a valid ARG name")
-        out["platforms"] = platforms or ["amd64", "arm64"]
+        if not platforms:
+            # MULTIARCH = 'false' built amd64 only (and such branches have no Dockerfile.aarch64).
+            platforms = ["amd64"] if self.var("MULTIARCH").lower() == "false" else ["amd64", "arm64"]
+        out["platforms"] = platforms
         if self.name.startswith("baseimage-"):
             out["first_party"] = False
         if self.get("build_riscv64"):
