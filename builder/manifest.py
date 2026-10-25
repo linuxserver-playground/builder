@@ -41,7 +41,8 @@ class Settings:
     org: str = "linuxserver-playground"
     registry: str = "ghcr.io"
     control_url: str = "https://ci.thelamer.duckdns.org:8443"
-    docs_url: str = "https://linuxserver-playground.github.io/docs"
+    site_url: str = "https://linuxserver-playground.github.io/site"
+    docs_url: str = "https://linuxserver-playground.github.io/site/docs"
     hub_url: str = "https://linuxserver-playground.github.io/hub"
     blog_url: str = "https://blog.linuxserver.io"
     upstream_org: str = "linuxserver"
@@ -364,13 +365,14 @@ def build_context(data: Json, settings: Settings | None = None) -> Json:
         "proxy": data.get("proxy"),
         "deprecation": {"status": False, "message": "", **data.get("deprecation", {})},
         "changelog": list(data.get("changelog", [])),
-        "docs_page_url": f"{settings.docs_url}/images/{repo}",
+        "site_url": settings.site_url,
+        "docs_page_url": f"{settings.site_url}/images/{name}/",
         "control_url": settings.control_url,
         "ci_badge_url": f"{settings.control_url}/badge/{name}/{tag}.svg",
         "ci_page_url": f"{settings.control_url}/images/{name}/{tag}",
         "hub_url": settings.hub_url,
-        "mods_url": f"{settings.hub_url}/mods/?image={name}",
-        "universal_mods_url": f"{settings.hub_url}/mods/?image=universal",
+        "mods_url": f"{settings.site_url}/mods/?image={name}",
+        "universal_mods_url": f"{settings.site_url}/mods/?image=universal",
         "blog_url": settings.blog_url,
         "docs_url": settings.docs_url,
         "schema_url": settings.schema_url,

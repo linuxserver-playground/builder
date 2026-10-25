@@ -72,7 +72,7 @@ def test_readme_has_the_expected_sections_in_order() -> None:
 def test_badges_point_at_the_new_world() -> None:
     readme = render_all(_sonarr(), SETTINGS)["README.md"]
     assert "https://ci.thelamer.duckdns.org:8443/badge/sonarr/latest.svg" in readme
-    assert "https://linuxserver-playground.github.io/hub/mods/?image=sonarr" in readme
+    assert "https://linuxserver-playground.github.io/site/mods/?image=sonarr" in readme
     assert "https://github.com/linuxserver-playground/docker-sonarr/releases" in readme
     assert "ghcr.io/linuxserver-playground/sonarr:latest" in readme
 

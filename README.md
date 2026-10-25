@@ -36,7 +36,7 @@ file, the field (a JSON path into `image.yml`) and the line when it knows it.
 | `builder snippets [REPO_DIR] --format compose\|run\|json [--required-only]` | The docker compose / docker run snippet (or a JSON record with both variants and the normalised runtime parameters). The same functions live in `builder.snippets` for the hub to import. |
 
 The links baked into the generated files come from `builder.manifest.Settings`; each field can be overridden
-with an environment variable (`BUILDER_CONTROL_URL`, `BUILDER_DOCS_URL`, `BUILDER_HUB_URL`, `BUILDER_ORG`,
+with an environment variable (`BUILDER_CONTROL_URL`, `BUILDER_SITE_URL`, `BUILDER_DOCS_URL`, `BUILDER_HUB_URL`, `BUILDER_ORG`,
 `BUILDER_REGISTRY`). The CI badge is served by the control plane at `{control_url}/badge/{name}/{tag}.svg`.
 
 ### As a container
