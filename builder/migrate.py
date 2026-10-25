@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from jinja2 import DebugUndefined, Environment, UndefinedError
+from jinja2 import DebugUndefined, Environment, TemplateError
 
 from contracts import errors as contract_errors
 from contracts import format_error, load_yaml
@@ -121,8 +121,9 @@ def _render_legacy(raw: Json) -> tuple[Json, list[str]]:
             if "{{" in value or "{%" in value:
                 try:
                     return env.from_string(value).render(ctx)
-                except UndefinedError:
-                    # An escaped expression rendered on an earlier pass, e.g. `${{ secrets.CR_PAT }}`: keep it literal.
+                except TemplateError:
+                    # Text an earlier pass already rendered: an escaped `${{ secrets.CR_PAT }}`, or a `{% raw %}`
+                    # block holding `docker inspect -f '{{ index .Config.Labels "build_version" }}'`. Keep it literal.
                     return value
             return value
         if isinstance(value, list):

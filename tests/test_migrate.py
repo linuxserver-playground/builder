@@ -264,6 +264,14 @@ def test_multiarch_false_builds_amd64_only() -> None:
     assert manifest["build"]["platforms"] == ["amd64"]
 
 
+def test_raw_blocks_render_once() -> None:
+    readme_vars, jenkins_vars, dockerfile = _load("sonarr")
+    inspect = "docker inspect -f '{{ index .Config.Labels \"build_version\" }}' x"
+    readme_vars["app_setup_block"] = "{% raw -%}\n" + inspect + "\n{%- endraw %}"
+    manifest, _, _ = migrate(readme_vars, jenkins_vars, dockerfile)
+    assert '{{ index .Config.Labels "build_version" }}' in manifest["docs"]["setup"]
+
+
 def test_split_pipeline_respects_quotes() -> None:
     assert split_pipeline("curl -s 'http://a|b' | jq -r '.x | .y' | sed 's|^v||'") == [
         "curl -s 'http://a|b'",
