@@ -244,6 +244,18 @@ def test_escaped_github_expressions_survive_rendering() -> None:
     assert any(t.startswith("dropped external_artifact_check: rewrite it as upstream.version") for t in todos)
 
 
+def test_groovy_escapes_are_undoubled() -> None:
+    readme_vars, jenkins_vars, dockerfile = _load("sonarr")
+    jenkins_vars["custom_version_command"] = (
+        "wget -qO- https://x.example/v | jq -r '. | contains( \\\\\"rc\\\\\" )' | sed 's|\\\\b||g'"
+    )
+    manifest, _, _ = migrate(readme_vars, jenkins_vars, dockerfile)
+    assert (
+        manifest["upstream"]["version"]["run"]
+        == "wget -qO- https://x.example/v | jq -r '. | contains( \\\"rc\\\" )' | sed 's|\\b||g'"
+    )
+
+
 def test_split_pipeline_respects_quotes() -> None:
     assert split_pipeline("curl -s 'http://a|b' | jq -r '.x | .y' | sed 's|^v||'") == [
         "curl -s 'http://a|b'",

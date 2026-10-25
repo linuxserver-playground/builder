@@ -181,6 +181,11 @@ def _with_transforms(source: Json, stages: list[str]) -> Json | None:
     return source
 
 
+def groovy_unescape(command: str) -> str:
+    """The Jenkinsfile ran these commands inside Groovy '''...''' strings, where a doubled backslash is one."""
+    return command.replace("\\\\", "\\")
+
+
 def parse_version_command(command: str) -> tuple[Json, str | None]:
     """Recognise the common custom_version_command shapes; otherwise keep the command verbatim with a TODO."""
     fallback = ({"type": "command", "run": command.strip()}, "version command not recognised; prefer a typed source")
@@ -300,7 +305,7 @@ class Migrator:
         self.used.add("external_type")
         command = self.get("custom_version_command")
         if command:
-            return parse_version_command(str(command))
+            return parse_version_command(groovy_unescape(str(command)))
         ext = str(self.get("external_type", "na"))
         repo = f"{self.var('EXT_USER')}/{self.var('EXT_REPO')}"
         if ext == "github_stable":
@@ -344,7 +349,7 @@ class Migrator:
     def notes_source(self) -> tuple[Json | None, str | None]:
         command = self.get("custom_release_notes_command")
         if command:
-            return parse_notes_command(str(command))
+            return parse_notes_command(groovy_unescape(str(command)))
         ext = str(self.get("external_type", "na"))
         repo = f"{self.var('EXT_USER')}/{self.var('EXT_REPO')}"
         if ext in ("github_stable", "github_devel"):
