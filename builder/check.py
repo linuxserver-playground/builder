@@ -49,7 +49,10 @@ def _warn(file: str, field: str, message: str, line: int | None = None) -> Findi
     return Finding("warning", file, field, message, line)
 
 
-def check_repo(repo_dir: Path, settings: Settings | None = None) -> list[Finding]:
+def check_repo(repo_dir: Path, settings: Settings | None = None, drift_level: str = "error") -> list[Finding]:
+    """Every problem in the repository. `drift_level` is the level of generated files that do not match a fresh
+    render: an error on the live branch's own check, a warning for PR and branch builds, where the files are
+    re-rendered by the live build after merge and drift only means the builder changed since."""
     settings = settings or Settings.from_env()
     findings: list[Finding] = []
     manifest_path = repo_dir / "image.yml"
@@ -63,7 +66,7 @@ def check_repo(repo_dir: Path, settings: Settings | None = None) -> list[Finding
 
     files = render_all(manifest.data, settings)
     for rel, state in drift(repo_dir, files):
-        findings.append(_error(rel, "<file>", f"{state} (run builder render)"))
+        findings.append(Finding(drift_level, rel, "<file>", f"{state} (run builder render)", None))
     findings.extend(check_dockerfiles(repo_dir, manifest))
     findings.extend(check_s6_scripts(repo_dir))
     findings.extend(check_changelog(manifest))

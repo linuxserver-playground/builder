@@ -20,6 +20,12 @@ def _parser() -> argparse.ArgumentParser:
 
     check = sub.add_parser("check", help="validate image.yml and everything generated from it; exit 1 on failure")
     check.add_argument("repo_dir", nargs="?", default=".")
+    check.add_argument(
+        "--drift",
+        choices=["error", "warn"],
+        default="error",
+        help="how to report generated files that differ from a fresh render (warn: PR and branch builds)",
+    )
 
     render = sub.add_parser("render", help="write README.md, AGENTS.md, LICENSE and the build workflow")
     render.add_argument("repo_dir", nargs="?", default=".")
@@ -39,8 +45,8 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-def cmd_check(repo_dir: Path, settings: Settings) -> int:
-    findings = check_repo(repo_dir, settings)
+def cmd_check(repo_dir: Path, settings: Settings, drift: str = "error") -> int:
+    findings = check_repo(repo_dir, settings, "warning" if drift == "warn" else "error")
     for finding in findings:
         print(finding, file=sys.stderr if finding.level == "error" else sys.stdout)
     errors = [f for f in findings if f.level == "error"]
@@ -107,7 +113,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     settings = Settings.from_env()
     try:
         if args.command == "check":
-            return cmd_check(repo_dir, settings)
+            return cmd_check(repo_dir, settings, args.drift)
         if args.command == "render":
             return cmd_render(repo_dir, settings, args.only, args.all)
         if args.command == "migrate":

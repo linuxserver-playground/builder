@@ -33,6 +33,19 @@ def test_hand_edited_readme_fails(sonarr_repo: Path, capsys: object) -> None:
     assert main(["check", str(sonarr_repo)]) == 1
 
 
+def test_drift_can_be_a_warning(sonarr_repo: Path) -> None:
+    (sonarr_repo / "README.md").write_text("rendered by an older builder\n", encoding="utf-8")
+    found = check_repo(sonarr_repo, SETTINGS, drift_level="warning")
+    assert errors(found) == [] and warnings(found) == ["warning: README.md: <file>: differs (run builder render)"]
+    assert main(["check", "--drift", "warn", str(sonarr_repo)]) == 0
+    assert main(["check", str(sonarr_repo)]) == 1
+
+
+def test_drift_warning_does_not_hide_an_invalid_manifest(sonarr_repo: Path) -> None:
+    (sonarr_repo / "image.yml").write_text("name: [not, a, string]\n", encoding="utf-8")
+    assert main(["check", "--drift", "warn", str(sonarr_repo)]) == 1
+
+
 def test_missing_generated_file_fails(sonarr_repo: Path) -> None:
     (sonarr_repo / "AGENTS.md").unlink()
     assert errors(check_repo(sonarr_repo, SETTINGS)) == ["AGENTS.md: <file>: missing (run builder render)"]
