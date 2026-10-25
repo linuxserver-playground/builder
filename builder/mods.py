@@ -28,8 +28,18 @@ GENERATED = ("README.md", "AGENTS.md", ".github/workflows/build.yml")
 SCHEMA_URL = "https://github.com/linuxserver-playground/builder/blob/main/schemas/mod.schema.json"
 SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 DEPRECATED_BRANCH = re.compile(r"^letsencrypt-|deprecat")
+DEPRECATED_TEXT = re.compile(
+    r"^.*(?:this mod (?:is|has been) (?:now )?deprecated|deprecation notice|mod (?:is|has been) deprecated).*$",
+    re.I | re.M,
+)
 NOT_MODS = {"mod-scripts": "build tooling of the legacy repository, not a mod"}
 GENERIC_TITLES = {"about", "overview", "description", "introduction", "readme"}
+# The legacy READMEs' usage boilerplate, which the generated README states itself.
+USAGE_LINE = re.compile(
+    r"^\s*(?:[-*]\s+)?(?:In\b[^`]*\bdocker (?:container )?arguments, set an environment variable `DOCKER_MODS=[^`]*`"
+    r"(?: to enable)?\.?|If adding multiple mods, enter them in an array separated by .*)\s*$",
+    re.I,
+)
 
 
 def branch_of(mod: Json) -> str:
@@ -124,7 +134,13 @@ def readme_parts(readme: str) -> tuple[str | None, str, str]:
                 break
         if not (title and "deprecated" in title.lower() and any(line.startswith("# ") for line in lines)):
             break
-    blocks = re.split(r"\n\s*\n", "\n".join(lines).strip("\n"))
+    kept, fenced = [], False
+    for line in lines:
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+        if fenced or not USAGE_LINE.match(line):
+            kept.append(line)
+    blocks = re.split(r"\n\s*\n", "\n".join(kept).strip("\n"))
     summary = ""
     for index, block in enumerate(blocks):
         first = block.strip()
@@ -196,9 +212,14 @@ def convert(
         summary = f"{title}."
         result.notes.append("no usable first paragraph in README.md; the summary is the title")
     multi = (_env_value(workflow, "MULTI_ARCH") or "").lower() == "true"
-    version = re.search(r'^\s*MOD_VERSION=(?!"")(.+)$', workflow, re.MULTILINE)
+    version = re.search(r'^\s*MOD_VERSION=(?!""|\$\{\{ *env\.MOD_VERSION *\}\})(.+)$', workflow, re.MULTILINE)
     if version:
-        result.notes.append(f"upstream computes MOD_VERSION ({version.group(1).strip()[:80]}); no version source set")
+        dockerfile = read("Dockerfile") or ""
+        fallback = re.search(r'-z "?\$\{?MOD_VERSION|\$\{MOD_VERSION:-', dockerfile)
+        result.notes.append(
+            "upstream computed MOD_VERSION in BuildImage.yml; builds here pass none, so "
+            + ("the Dockerfile's own lookup applies" if fallback else "the Dockerfile needs a lookup of its own")
+        )
 
     mod: Json = {
         "schema": 1,
@@ -212,16 +233,20 @@ def convert(
     images = sorted({i for i in listed_for if i != target and SLUG.match(i)})
     if images:
         mod["images"] = images
-    deprecated = bool(DEPRECATED_BRANCH.search(branch)) or bool(
+    notices = [_plain(m.group(0)).strip("# >") for m in DEPRECATED_TEXT.finditer(read("README.md") or "")]
+    notice = next((n for n in notices if len(n) > len("this mod is deprecated.")), None)
+    deprecated = bool(DEPRECATED_BRANCH.search(branch) or notices) or bool(
         re.search(r"\bdeprecated\b", f"{title} {summary}", re.I)
     )
     mod["deprecated"] = {"status": deprecated}
     if deprecated:
-        mod["deprecated"]["message"] = (
-            "The letsencrypt image was renamed swag; use the swag mods."
-            if branch.startswith("letsencrypt-")
-            else "Marked deprecated upstream."
-        )
+        if branch.startswith("letsencrypt-"):
+            message = "The letsencrypt image was renamed swag; use the swag mods."
+        elif notice:
+            message = _sentence_cut(rewrite_registry(notice, org), 200)
+        else:
+            message = "Marked deprecated upstream."
+        mod["deprecated"]["message"] = message
     # Trailing spaces would stop the YAML dumper from writing the text as a readable `|` block.
     docs = "\n".join(line.rstrip() for line in rewrite_registry(body, org).split("\n")).strip()
     if docs:

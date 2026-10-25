@@ -33,7 +33,8 @@ README = (
     "In code-server docker arguments, set an environment variable "
     "`DOCKER_MODS=linuxserver/mods:code-server-python3`\n\n"
     "If adding multiple mods, enter them in an array separated by `|`, such as "
-    "`DOCKER_MODS=lscr.io/linuxserver/mods:code-server-python3|linuxserver/mods:code-server-mod2`   \n"
+    "`DOCKER_MODS=lscr.io/linuxserver/mods:code-server-python3|linuxserver/mods:code-server-mod2`   \n\n"
+    "Compose example:\n\n```yaml\nenvironment:\n  - DOCKER_MODS=linuxserver/mods:code-server-python3\n```\n"
 )
 
 
@@ -66,7 +67,7 @@ def test_convert_a_regular_branch() -> None:
     assert mod["platforms"] == ["amd64"] and mod["images"] == ["openvscode-server"]
     assert mod["deprecated"] == {"status": False}
     # The summary paragraph is not repeated; the registry and repository point at the playground.
-    assert not mod["docs"].startswith("This mod adds")
+    assert not mod["docs"].startswith("This mod adds") and "If adding multiple mods" not in mod["docs"]
     assert "ghcr.io/linuxserver-playground/mods:code-server-python3" in mod["docs"]
     assert "linuxserver/mods:" not in mod["docs"].replace("linuxserver-playground/mods:", "")
     assert not any(line != line.rstrip() for line in mod["docs"].splitlines())
@@ -85,7 +86,7 @@ def test_multi_arch_versioning_and_irregular_names_are_reported() -> None:
     assert (mod["target"], mod["name"]) == ("nginx", "proxy-confs-version")
     assert mod["platforms"] == ["amd64", "arm64"] and mod["maintainers"] == ["linuxserver"]
     assert any("does not match BuildImage.yml" in n for n in result.notes)
-    assert any("computes MOD_VERSION" in n for n in result.notes)
+    assert any("needs a lookup of its own" in n for n in result.notes)
     text = mod_yaml(mod, result.notes)
     assert text.startswith("# Schema: ") and "# Converted from linuxserver/docker-mods: " in text
     assert yaml.safe_load(text) == mod
@@ -127,6 +128,20 @@ def test_deprecated_banner_gives_way_to_the_real_title() -> None:
     mod = result.mod
     assert mod is not None and mod["title"] == "Imagemagick"
     assert mod["deprecated"]["status"] is True and "swag" in mod["deprecated"]["message"]
+
+    notice = README + "\n## DEPRECATION NOTICE\n\n### This mod is deprecated: the feature is now in the image.\n"
+    result = convert(
+        "code-server-python3",
+        branch_files(legacy("code-server", "python3", readme=notice)),
+        listed_for=[],
+        known_targets={"code-server"},
+        maintainers=["x"],
+    )
+    assert result.mod is not None
+    assert result.mod["deprecated"] == {
+        "status": True,
+        "message": "This mod is deprecated: the feature is now in the image.",
+    }
 
 
 def test_readme_parts_skip_badges_and_usage_lines() -> None:
