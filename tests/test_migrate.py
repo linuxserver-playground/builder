@@ -237,6 +237,13 @@ def test_date_typos_are_flagged() -> None:
     assert any("11.30.20" in t and "MM.DD.YY" in t for t in todos)
 
 
+def test_escaped_github_expressions_survive_rendering() -> None:
+    # emby's external_artifact_check escapes `${{ secrets.CR_PAT }}`; re-rendering it must not raise.
+    _, _, todos = _migrate("emby")
+    assert any("${{ secrets.CR_USER }}" in t for t in todos)
+    assert any(t.startswith("dropped external_artifact_check: rewrite it as upstream.version") for t in todos)
+
+
 def test_split_pipeline_respects_quotes() -> None:
     assert split_pipeline("curl -s 'http://a|b' | jq -r '.x | .y' | sed 's|^v||'") == [
         "curl -s 'http://a|b'",

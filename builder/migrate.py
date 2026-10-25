@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from jinja2 import DebugUndefined, Environment
+from jinja2 import DebugUndefined, Environment, UndefinedError
 
 from contracts import errors as contract_errors
 from contracts import format_error, load_yaml
@@ -119,7 +119,11 @@ def _render_legacy(raw: Json) -> tuple[Json, list[str]]:
     def render(value: Any) -> Any:
         if isinstance(value, str):
             if "{{" in value or "{%" in value:
-                return env.from_string(value).render(ctx)
+                try:
+                    return env.from_string(value).render(ctx)
+                except UndefinedError:
+                    # An escaped expression rendered on an earlier pass, e.g. `${{ secrets.CR_PAT }}`: keep it literal.
+                    return value
             return value
         if isinstance(value, list):
             return [render(v) for v in value]

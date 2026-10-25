@@ -127,6 +127,7 @@ DROPPED: dict[str, str] = {
     "custom_external_trigger": "scheduler is the control plane",
     "custom_package_trigger": "scheduler is the control plane",
     "external_trigger_delay_hours": "scheduler is the control plane",
+    "external_artifact_check": "rewrite it as upstream.version.require_assets (URL templates that must return 200)",
     "image_provenance": "always on in the shared workflow",
     "image_sbom": "always on in the shared workflow",
     "image_builder": "always the shared workflow",

@@ -1,0 +1,36 @@
+---
+
+# jenkins variables
+project_name: docker-emby
+external_type: github_stable
+release_type: stable
+release_tag: latest
+ls_branch: master
+external_artifact_check: |
+  assets=$(curl -u "${{ '{{' }} secrets.CR_USER {{ '}}' }}:${{ '{{' }} secrets.CR_PAT {{ '}}' }}" -sX GET "https://api.github.com/repos/MediaBrowser/Emby.Releases/releases/tags/${EXT_RELEASE}" | jq -r '.assets[].browser_download_url')
+  if grep -q "emby-server-deb_${EXT_RELEASE}_arm64.deb$" <<< "${assets}" && grep -q "emby-server-deb_${EXT_RELEASE}_amd64.deb$" <<< "${assets}"; then
+    artifacts_found="true"
+  else
+    artifacts_found="false"
+  fi
+repo_vars:
+  - EXT_GIT_BRANCH = 'master'
+  - EXT_USER = 'MediaBrowser'
+  - EXT_REPO = 'Emby.Releases'
+  - BUILD_VERSION_ARG = 'EMBY_RELEASE'
+  - LS_USER = 'linuxserver'
+  - LS_REPO = 'docker-emby'
+  - CONTAINER_NAME = 'emby'
+  - DOCKERHUB_IMAGE = 'linuxserver/emby'
+  - DEV_DOCKERHUB_IMAGE = 'lsiodev/emby'
+  - PR_DOCKERHUB_IMAGE = 'lspipepr/emby'
+  - DIST_IMAGE = 'ubuntu'
+  - MULTIARCH='true'
+  - CI='true'
+  - CI_WEB='true'
+  - CI_PORT='8096'
+  - CI_SSL='false'
+  - CI_DELAY='120'
+  - CI_DOCKERENV=''
+  - CI_AUTH=''
+  - CI_WEBPATH=''
