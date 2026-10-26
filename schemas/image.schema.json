@@ -216,7 +216,7 @@
         "channel": { "enum": ["stable", "prerelease"], "description": "Marks the GitHub Release as a prerelease when 'prerelease'." },
         "tags": {
           "type": "array",
-          "description": "Every tag the image publishes across branches, for the Version Tags table and store branch pickers. Include this branch's tag.",
+          "description": "The tags the README's Version Tags table and store branch pickers advertise, this branch's included. A live branch (its own release.branch names it) may release before it is listed here.",
           "items": {
             "type": "object",
             "additionalProperties": false,
