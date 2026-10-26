@@ -38,7 +38,7 @@
       "additionalProperties": false,
       "description": "Paths inside test.<arch>.tar.gz.",
       "properties": {
-        "html": { "type": "string" },
+        "html": { "type": "string", "description": "Older reports only: the retired HTML report." },
         "container_log": { "type": "string" },
         "screenshot": { "type": "string" },
         "browser_log": { "type": "string" },

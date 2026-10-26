@@ -151,7 +151,7 @@ A live release attaches these assets to its GitHub Release. Names are fixed; `<a
 | `layers.<arch>.json` | in `bundle.schema.json` `$defs/layer` (array) | From the manifest, `docker history` and provenance |
 | `files.<arch>.json.gz` | in `bundle.schema.json` `$defs/file_tree` | `dumper files` inside the image: a nested tree with sizes, link targets, permissions and owners; hardlinks exact from inodes |
 | `test.<arch>.json` | `schemas/test-report.schema.json` | One per arch |
-| `test.<arch>.tar.gz` | | HTML report, screenshots, container log, shellcheck XML |
+| `test.<arch>.tar.gz` | | Screenshot, container and browser logs, sysinfo, package diff, shellcheck XML |
 | `package_versions.<arch>.txt` | text | syft table, the human-readable list |
 | `record.json` | `schemas/record.schema.json` | Everything the hub stores about the build, derived in the publish job by `builder record`: the normalised package tables, the diff against the previous release of the branch, the grype scan of both architectures, the layers, the test reports and the base image's layer digests. The hub ingests a release from `build.json` and this file alone; a part the build could not derive is listed in `errors` and the hub derives it instead. |
 
@@ -168,12 +168,15 @@ newest build of every branch keeps current findings.
 
 `build.json` is also written to the workflow job summary and sent to the control plane as a
 `build.summary` event (`schemas/control-event.schema.json`). PR and dev builds produce the same bundle
-as workflow artifacts (not Release assets) so reviewers get the same data.
+as workflow artifacts (not Release assets) so reviewers get the same data. A PR build's report (tests per
+arch, screenshots, runtime, package changes, log tails) is its pull request comment; a dev or live build's job
+summary opens with the same report, and that run page is where notifications link a build without a page on
+the website.
 
 ## 7. Release notes
 
-The Release body has three sections, in order: **CI**, a link to the test report in the control plane;
-**LinuxServer changes**, GitHub's auto-generated notes for the commits since the previous release of the
+The Release body has three sections, in order: **CI**, a link to the build's CI results page on the website
+(§10); **LinuxServer changes**, GitHub's auto-generated notes for the commits since the previous release of the
 branch; **Upstream changes**, the text fetched by `upstream.notes`, verbatim, with its source URL. The
 hub stores all three.
 
@@ -219,7 +222,7 @@ renders the fleet dashboard from the control plane's API.
 
 | Route | Owner | Purpose |
 | --- | --- | --- |
-| `{SITE_URL}/images/{image}/builds/{tag}/` | site | The CI results page of one live build, rendered from the hub's data: per-arch test table, report, screenshot, logs, diff, explorer. It exists as soon as the hub serves the build: until the site's next build makes it a static page, the site's 404 page renders it in the browser from the hub's API. `test.report_url` in the bundle, the CI section of release notes and Discord embeds point here. Section anchors are stable (`#quick-start`, `#setup`, `#parameters`, `#proxy`, `#mods`, `#builds`, `#fleet`). |
+| `{SITE_URL}/images/{image}/builds/{tag}/` | site | The CI results page of one live build, rendered from the hub's data: per-arch test table, screenshot, logs, diff, explorer. It exists as soon as the hub serves the build: until the site's next build makes it a static page, the site's 404 page renders it in the browser from the hub's API. `test.report_url` in the bundle, the CI section of release notes and Discord embeds point here. Section anchors are stable (`#quick-start`, `#setup`, `#parameters`, `#proxy`, `#mods`, `#builds`, `#fleet`). |
 | `{HUB_URL}/builds/{image}/{tag}/` | hub | The same results as plain static pages and the unpacked report files the site reads. |
 | `{SITE_URL}/fleet/...` | site | The fleet dashboard, rendered from the control plane's JSON API with cookie sign-in. |
 | `{HUB_URL}/builds/{image}/` | hub | Build history of one image. |
