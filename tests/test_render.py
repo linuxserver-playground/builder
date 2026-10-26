@@ -137,6 +137,22 @@ def test_agents_md_context() -> None:
     assert SETTINGS.schema_url in agents
 
 
+def test_live_branches_leave_out_the_default_branchs_own_tag() -> None:
+    """baseimage-debian publishes trixie from master, bookworm and kali from their own branches."""
+    data = _sonarr()
+    data["release"] = {
+        "branch": "master",
+        "tag": "trixie",
+        "channel": "stable",
+        "tags": [
+            {"tag": "trixie", "description": "Debian 13."},
+            {"tag": "bookworm", "description": "Debian 12."},
+            {"tag": "kali", "description": "Kali Linux."},
+        ],
+    }
+    assert build_context(data, SETTINGS)["live_branches"] == ["master", "bookworm", "kali"]
+
+
 def test_custom_readme_replaces_the_body() -> None:
     data = _sonarr()
     data["docs"]["custom_readme"] = "# Internal tool\n\nHand written."  # type: ignore[index]

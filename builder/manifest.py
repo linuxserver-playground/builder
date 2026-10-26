@@ -307,9 +307,11 @@ def build_context(data: Json, settings: Settings | None = None) -> Json:
         }
         for t in release.get("tags", [])
     ]
+    # The other tags name their branches (usually). This branch's own tag is not a branch, nor is `latest`, the
+    # default branch's: base images publish `3.24` or `trixie` from their default branch.
     live_branches = [release["branch"]]
     for t in tags:
-        if t["tag"] not in live_branches and t["tag"] != "latest":
+        if t["tag"] not in live_branches and t["tag"] not in (release["tag"], "latest"):
             live_branches.append(t["tag"])
     test = data.get("test", {})
     runtime = normalize_runtime(data.get("runtime", {}), name)
