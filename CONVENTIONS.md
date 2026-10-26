@@ -219,7 +219,7 @@ renders the fleet dashboard from the control plane's API.
 
 | Route | Owner | Purpose |
 | --- | --- | --- |
-| `{SITE_URL}/images/{image}/builds/{tag}/` | site | The CI results page of one live build, rendered from the hub's data: per-arch test table, report, screenshot, logs, diff, explorer. `test.report_url` in the bundle, the CI section of release notes and Discord embeds point here. Section anchors are stable (`#quick-start`, `#setup`, `#parameters`, `#proxy`, `#mods`, `#builds`, `#fleet`). |
+| `{SITE_URL}/images/{image}/builds/{tag}/` | site | The CI results page of one live build, rendered from the hub's data: per-arch test table, report, screenshot, logs, diff, explorer. It exists as soon as the hub serves the build: until the site's next build makes it a static page, the site's 404 page renders it in the browser from the hub's API. `test.report_url` in the bundle, the CI section of release notes and Discord embeds point here. Section anchors are stable (`#quick-start`, `#setup`, `#parameters`, `#proxy`, `#mods`, `#builds`, `#fleet`). |
 | `{HUB_URL}/builds/{image}/{tag}/` | hub | The same results as plain static pages and the unpacked report files the site reads. |
 | `{SITE_URL}/fleet/...` | site | The fleet dashboard, rendered from the control plane's JSON API with cookie sign-in. |
 | `{HUB_URL}/builds/{image}/` | hub | Build history of one image. |
