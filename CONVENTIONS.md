@@ -26,13 +26,16 @@ downstream artefact; a public control plane schedules builds and shows the whole
 | `docker-mods` | One branch per mod, `template` branch, `mod.yml` per branch | per branch |
 | `docker-<name>` | One container image | see §2 |
 
-Nothing is deployed to any namespace outside `linuxserver-playground`. Base images are pulled read-only
-from `ghcr.io/linuxserver/baseimage-*` until a base image repo joins the playground.
+Nothing is deployed to any namespace outside `linuxserver-playground`, and images build `FROM` the
+playground's own base images and build layers (`ghcr.io/linuxserver-playground/baseimage-*`, `unrar`). An image
+is pulled from `ghcr.io/linuxserver/` only where the playground does not publish it or the tag yet. The
+workspace's `docs/playground-references.md` lists these rewrites, so they can be swapped back to
+`ghcr.io/linuxserver/` when the layout moves to that org.
 
 ## 2. Image repository layout
 
 ```
-Dockerfile              amd64, FROM ghcr.io/linuxserver/baseimage-<base>:<tag>
+Dockerfile              amd64, FROM ghcr.io/linuxserver-playground/baseimage-<base>:<tag>
 Dockerfile.aarch64      arm64, identical except the base tag
 root/                   copied to / in the image; s6-overlay v3 units under root/etc/s6-overlay/s6-rc.d
 image.yml               the manifest (schemas/image.schema.json). The only hand-edited metadata file.
