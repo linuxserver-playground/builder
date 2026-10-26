@@ -69,6 +69,7 @@ def check_repo(repo_dir: Path, settings: Settings | None = None, drift_level: st
         findings.append(Finding(drift_level, rel, "<file>", f"{state} (run builder render)", None))
     findings.extend(check_dockerfiles(repo_dir, manifest))
     findings.extend(check_s6_scripts(repo_dir))
+    findings.extend(check_kind(manifest))
     findings.extend(check_changelog(manifest))
     findings.extend(check_branch(repo_dir, manifest))
     findings.extend(check_credentials(repo_dir))
@@ -125,6 +126,20 @@ def check_s6_scripts(repo_dir: Path) -> list[Finding]:
             if actual.strip() != expected:
                 findings.append(_error(rel, f"line {index + 1}", f"expected {expected!r}, found {actual!r}", index + 1))
     return findings
+
+
+def check_kind(manifest: Manifest) -> list[Finding]:
+    """The baseimage-* repos are the base images; the name and the kind must agree so no consumer needs both."""
+    name = manifest.data["name"]
+    kind = manifest.data.get("kind", "app")
+    if name.startswith("baseimage-") == (kind == "base"):
+        return []
+    if kind == "base":
+        message = "kind: base needs a baseimage-* name"
+    else:
+        message = "baseimage-* repos are base images; set kind: base"
+    line = manifest.line_of(("kind",)) or manifest.line_of(("name",))
+    return [_error(str(manifest.path), "kind", message, line)]
 
 
 def check_changelog(manifest: Manifest) -> list[Finding]:

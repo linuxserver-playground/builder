@@ -128,6 +128,15 @@ def test_changelog_must_be_newest_first(sonarr_repo: Path) -> None:
     assert "newest first" in found[0].message
 
 
+def test_kind_base_needs_a_baseimage_name(sonarr_repo: Path) -> None:
+    manifest = sonarr_repo / "image.yml"
+    text = manifest.read_text(encoding="utf-8")
+    manifest.write_text(text.replace("\nsummary:", "\nkind: base\nsummary:", 1), encoding="utf-8")
+    found = [f for f in check_repo(sonarr_repo, SETTINGS) if f.field == "kind"]
+    assert len(found) == 1
+    assert "baseimage-" in found[0].message
+
+
 def test_credentials_are_caught(sonarr_repo: Path) -> None:
     secret = sonarr_repo / "root" / "secret.env"
     secret.write_text("TOKEN=ghp_" + "a" * 36 + "\nKEY=AKIAABCDEFGHIJKLMNOP\n", encoding="utf-8")

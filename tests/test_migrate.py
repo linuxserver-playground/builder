@@ -9,7 +9,14 @@ import pytest
 
 from builder.cli import main
 from builder.manifest import load_manifest_text
-from builder.migrate import migrate, migrate_repo, parse_notes_command, parse_version_command, split_pipeline
+from builder.migrate import (
+    image_kind,
+    migrate,
+    migrate_repo,
+    parse_notes_command,
+    parse_version_command,
+    split_pipeline,
+)
 from builder.render import render_all
 from contracts import load_yaml, validate
 
@@ -192,6 +199,14 @@ def test_baseimage_alpine() -> None:
     assert "container_name" not in manifest["runtime"]
     assert manifest["test"]["env"] == {"LSIO_FIRST_PARTY": "true"}
     assert any("categories" in t for t in todos)
+    assert manifest["kind"] == "base"
+
+
+def test_image_kind() -> None:
+    assert image_kind("baseimage-ubuntu", ["Uncategorized"]) == "base"
+    assert image_kind("xvfb", ["Internal"]) == "tool"
+    assert image_kind("sonarr", ["Media Management"]) == "app"
+    assert "kind" not in _migrate("sonarr")[0]
 
 
 def test_jellyfin_and_code_server_and_heimdall() -> None:

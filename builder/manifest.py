@@ -323,6 +323,7 @@ def build_context(data: Json, settings: Settings | None = None) -> Json:
         "name": name,
         "title": data.get("title") or name.capitalize(),
         "summary": summary,
+        "kind": data.get("kind", "app"),
         "summary_oneline": " ".join(summary.split("\n\n")[0].split()),
         "extras": list(data.get("extras", [])),
         "repo": repo,

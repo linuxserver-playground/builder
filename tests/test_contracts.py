@@ -188,3 +188,12 @@ def test_validator_has_format_checking() -> None:
     data["created"] = "yesterday"
     assert errors("bundle", data)
     assert validator("bundle").format_checker is not None
+
+
+def test_kind_is_optional_and_closed() -> None:
+    data = _sonarr()
+    assert "kind" not in data
+    data["kind"] = "tool"
+    validate("image", data)
+    data["kind"] = "library"
+    assert errors("image", data)

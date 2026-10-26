@@ -27,6 +27,7 @@ SECTION_ORDER = (
     "name",
     "title",
     "summary",
+    "kind",
     "extras",
     "upstream",
     "release",
@@ -739,6 +740,9 @@ class Migrator:
             out["test"] = test
         out["runtime"] = self.runtime()
         out["docs"] = self.docs()
+        kind = image_kind(self.name, out["docs"]["categories"])
+        if kind != "app":
+            out["kind"] = kind
         proxy = self.proxy()
         if proxy:
             out["proxy"] = proxy
@@ -821,6 +825,15 @@ def to_yaml(manifest: Json, comments: list[tuple[str, str | None, str]], header:
     for part in parts[1:]:
         (scalar_head if part.split(":")[0] in ("schema", "name", "title") else body).append(part)
     return header + "\n".join(scalar_head) + "\n\n" + "\n\n".join(body) + "\n"
+
+
+def image_kind(name: str, categories: list[str]) -> str:
+    """Legacy repos carry no kind: the baseimage-* repos are base images and the `Internal` category marks tools."""
+    if name.startswith("baseimage-"):
+        return "base"
+    if "Internal" in categories:
+        return "tool"
+    return "app"
 
 
 def migrate(readme_vars: Json, jenkins_vars: Json, dockerfile: str = "") -> tuple[Json, str, list[str]]:
