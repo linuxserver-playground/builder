@@ -191,8 +191,9 @@
       "type": "object",
       "description": "Where upstream release notes come from. Stored verbatim with the Release and in the hub.",
       "required": ["type"],
+      "allOf": [{ "if": { "properties": { "type": { "const": "rss" } } }, "then": { "required": ["url", "title"] } }],
       "properties": {
-        "type": { "enum": ["github_release", "codeberg_release", "gitea_release", "github_commit", "gitlab_commit", "json", "command", "none"] },
+        "type": { "enum": ["github_release", "codeberg_release", "gitea_release", "github_commit", "gitlab_commit", "json", "rss", "command", "none"] },
         "repo": { "type": "string" },
         "base_url": { "type": "string", "format": "uri" },
         "tag": { "type": "string", "description": "Template for the release tag, e.g. 'v${VERSION}'. Defaults to '${VERSION}'." },
@@ -200,6 +201,7 @@
         "branch": { "type": "string" },
         "url": { "type": "string" },
         "jq": { "type": "string" },
+        "title": { "type": "string", "description": "rss: template for the title of the feed item that holds the notes, e.g. 'calibre ${VERSION}'. The version also matches without a leading v and without trailing .0 parts (9.17.0 matches 'calibre 9.17'). The item's description, usually HTML, is the notes." },
         "run": { "type": "string" }
       }
     },

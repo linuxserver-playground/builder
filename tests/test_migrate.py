@@ -354,6 +354,17 @@ def test_unrecognised_version_command_is_kept_verbatim() -> None:
     assert todo is not None and "TODO" not in todo and "not recognised" in todo
 
 
+def test_rss_notes_command_becomes_an_rss_source() -> None:
+    command = (
+        "curl -Ls https://calibre-ebook.com/changelog.rss | xmlstarlet sel --html -T -t -v "
+        "\"//rss/channel/item[title=\\\"calibre $(echo ${EXT_RELEASE} | sed -E 's|^v||' | sed -E 's|\\.0||')\\\"]"
+        '/description//text()" | pandoc -f html -t markdown-raw_html-native_divs > releasebody.json'
+    )
+    notes, todo = parse_notes_command(command)
+    assert notes == {"type": "rss", "url": "https://calibre-ebook.com/changelog.rss", "title": "calibre ${VERSION}"}
+    assert todo is None
+
+
 def test_notes_command_shapes() -> None:
     source, todo = parse_notes_command(
         'curl -H "Authorization: token ${GITHUB_TOKEN}" -s '

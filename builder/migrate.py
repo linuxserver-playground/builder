@@ -224,6 +224,10 @@ def parse_version_command(command: str) -> tuple[Json, str | None]:
     return fallback
 
 
+_RSS_ITEM = re.compile(r'item\[title=\\*"([^"$\\]*)\$\(')
+"""The fixed part of the item title in a legacy xmlstarlet notes command, before the version substitution."""
+
+
 def parse_notes_command(command: str) -> tuple[Json, str | None]:
     text = command.strip()
     text = re.sub(r"\s*>\s*releasebody\.json\s*$", "", text)
@@ -237,6 +241,12 @@ def parse_notes_command(command: str) -> tuple[Json, str | None]:
                 if (m := pattern.search(url)) and not _SHELL_EXPANSION.search(m.group(3)):
                     tag = m.group(3).replace("${EXT_RELEASE}", "${VERSION}")
                     return {"type": kind, "repo": f"{m.group(1)}/{m.group(2)}", "tag": tag}, None
+    if len(stages) >= 2 and stages[0].startswith("curl") and "xmlstarlet" in stages[1]:
+        # curl <feed> | xmlstarlet sel ... "//rss/channel/item[title=\"calibre $(...)\"]/description//text()" | pandoc
+        url_match = _URL.search(stages[0])
+        item = _RSS_ITEM.search(stages[1])
+        if url_match and item:
+            return {"type": "rss", "url": url_match.group(0), "title": f"{item.group(1)}${{VERSION}}"}, None
     run = text.replace("${EXT_RELEASE}", "${VERSION}").replace("EXT_RELEASE", "VERSION")
     return {"type": "command", "run": run}, "release notes command kept verbatim; it must print the notes to stdout"
 

@@ -197,3 +197,11 @@ def test_kind_is_optional_and_closed() -> None:
     validate("image", data)
     data["kind"] = "library"
     assert errors("image", data)
+
+
+def test_rss_notes_need_a_feed_and_an_item_title() -> None:
+    data = _sonarr()
+    data["upstream"]["notes"] = {"type": "rss", "url": "https://calibre-ebook.com/changelog.rss"}
+    assert any("title" in e.message for e in errors("image", data))
+    data["upstream"]["notes"]["title"] = "calibre ${VERSION}"
+    validate("image", data)
