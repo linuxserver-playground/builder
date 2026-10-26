@@ -56,8 +56,11 @@ A pull request that changes a generated file fails `builder check`.
 
 Every branch that publishes a tag is a *live branch* and carries its own `image.yml`, whose
 `release.branch` names the branch and `release.tag` names the tag it publishes (`latest` for the
-default branch, otherwise usually the branch name). Branches not named in any manifest are *dev
-branches*: they build and test, publish to the dev namespace, and never release.
+default branch, otherwise usually the branch name). The default branch's `release.tags` lists every
+live branch's tag, its own included: control and the hub find live branches through that list, so a
+release from an unlisted branch gets no website page and no scheduled checks, and the shared workflow
+refuses to release it. Branches not named in any manifest are *dev branches*: they build and test,
+publish to the dev namespace, and never release.
 
 Pull requests build and test fully and publish to the untrusted namespace (§4).
 
