@@ -26,14 +26,14 @@ dev = [
 builder = "builder.cli:main"
 
 [tool.lsio]
-contracts_version = "1.4"
+contracts_version = "1.5"
 
 [build-system]
 requires = ["setuptools>=75"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["contracts", "builder"]
+packages = ["contracts", "builder", "builder.derive"]
 
 [tool.setuptools.package-data]
 contracts = ["py.typed", "../schemas/*.json", "../templates/agents/*"]

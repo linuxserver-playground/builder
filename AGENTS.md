@@ -15,6 +15,7 @@ Treat a schema change as an API change and a template change as a change to ever
 | `schemas/*.json` | JSON Schema 2020-12. `$id` is the canonical URL; cross-references use bare filenames. |
 | `contracts/` | Validator package and `python -m contracts` CLI. |
 | `builder/` | The `builder` CLI: `cli.py` (argparse), `manifest.py` (loading with line numbers, validation, the render context), `render.py`, `check.py`, `snippets.py` (compose/run builders the hub imports), `admonition.py`, `migrate.py` + `legacy_vars.py` (readme-vars/jenkins-vars conversion). |
+| `builder/derive/` | Per-build data, derived in the build: `packages` (syft to the package table), `diff` (against the previous release), `vulns` (grype and the stored form of its report), `registry` (a base image's layer digests), `record` (`builder record`, which writes the release's `record.json`). The hub imports the same modules. |
 | `builder/templates/` | Jinja templates for `README.md`, the mkdocs page, `README.lite.md`, the build workflow; `parts/` holds the README sections ported from the legacy snippets. `LICENSE` is copied verbatim. |
 | `templates/agents/` | AGENTS.md templates rendered into image repos and mod branches. |
 | `examples/` | Converted manifests; tests keep them valid and rendering. Add one when a schema gains a feature. |
@@ -43,8 +44,8 @@ docker build -t builder:local . && docker run --rm -v "$PWD/examples/sonarr":/re
 
 ## Contracts
 
-Produces all five schemas. Consumers: `workflows` (bundle, control-event, image), `ci` (test-report),
-`hub` (image, mod, bundle, test-report, and `builder.snippets`), `control` (control-event), every `docker-*`
+Produces all six schemas. Consumers: `workflows` (bundle, control-event, image, record through `builder record`),
+`ci` (test-report), `hub` (image, mod, bundle, test-report, record, `builder.snippets` and `builder.derive`), `control` (control-event), every `docker-*`
 repo (image, through `builder check` in its build), `docker-mods` (mod).
 
 ## Pull request rules

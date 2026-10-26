@@ -153,11 +153,18 @@ A live release attaches these assets to its GitHub Release. Names are fixed; `<a
 | `test.<arch>.json` | `schemas/test-report.schema.json` | One per arch |
 | `test.<arch>.tar.gz` | | HTML report, screenshots, container log, shellcheck XML |
 | `package_versions.<arch>.txt` | text | syft table, the human-readable list |
+| `record.json` | `schemas/record.schema.json` | Everything the hub stores about the build, derived in the publish job by `builder record`: the normalised package tables, the diff against the previous release of the branch, the grype scan of both architectures, the layers, the test reports and the base image's layer digests. The hub ingests a release from `build.json` and this file alone; a part the build could not derive is listed in `errors` and the hub derives it instead. |
 
 The image itself carries the same packages-only SBOM as SPDX 2.3 (`sbom.<arch>.spdx.json` from the ci run),
 attached by the publish job in BuildKit's attestation layout next to the provenance, so
 `docker buildx imagetools inspect --format '{{json .SBOM}}'` and Docker tooling read it. BuildKit's own
 `--sbom` scan is off: it records every file and outgrew the 80 MiB attestation limit on desktop images.
+
+Data about one build is made by the build: the publish job has the image's SBOMs, test results and the
+previous release in hand, so it computes what the hub and the website show for the build, and the hub only
+indexes it. The derivation code (`builder.derive`) is the one the hub uses for releases made before
+`record.json` existed. The vulnerability scan is also repeated by the hub on the database's clock, so the
+newest build of every branch keeps current findings.
 
 `build.json` is also written to the workflow job summary and sent to the control plane as a
 `build.summary` event (`schemas/control-event.schema.json`). PR and dev builds produce the same bundle

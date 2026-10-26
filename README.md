@@ -7,11 +7,13 @@ The contracts and the manifest tooling for the LinuxServer v2 playground.
   rules, secrets, events.
 - `schemas/` are the machine-checkable contracts: `image.schema.json` (the `image.yml` manifest every image
   repo carries), `mod.schema.json` (`mod.yml` on every docker-mods branch), `bundle.schema.json` (the
-  `build.json` record attached to every release), `test-report.schema.json` (what the ci harness writes)
-  and `control-event.schema.json` (what the workflow tells the control plane).
+  `build.json` record attached to every release), `record.schema.json` (the `record.json` the build derives for
+  the hub), `test-report.schema.json` (what the ci harness writes) and `control-event.schema.json` (what the
+  workflow tells the control plane).
 - `contracts/` is a small Python package that validates data against those schemas, with a CLI.
 - `builder/` is the `builder` command line tool: it validates an image repository, renders every generated
-  file from `image.yml` and migrates legacy `readme-vars.yml` + `jenkins-vars.yml` pairs.
+  file from `image.yml`, migrates legacy `readme-vars.yml` + `jenkins-vars.yml` pairs and derives a build's
+  `record.json`.
 - `templates/agents/` are the AGENTS.md templates rendered into image repos and mod branches.
 - `examples/` are manifests converted from live repos; the tests keep them valid and rendering.
 
@@ -35,6 +37,7 @@ file, the field (a JSON path into `image.yml`) and the line when it knows it.
 | `builder migrate [REPO_DIR] [--out image.yml]` | Reads `readme-vars.yml` and `jenkins-vars.yml`, resolves their Jinja placeholders with the vendored legacy variables and writes `image.yml`. Typed version and notes sources are recognised from the common `custom_version_command` shapes; anything else becomes a `command` source with a `# TODO`. Unmapped keys are printed to stderr as TODOs. `--out -` prints to stdout. |
 | `builder render-mod [DIR] [--check]` | On a docker-mods branch: writes `README.md`, `AGENTS.md` and `.github/workflows/build.yml` from `mod.yml`; `--check` only reports the files that differ (exit 1). |
 | `builder snippets [REPO_DIR] --format compose\|run\|json [--required-only]` | The docker compose / docker run snippet (or a JSON record with both variants and the normalised runtime parameters). The same functions live in `builder.snippets` for the hub to import. |
+| `builder record OUT_DIR [--previous DIR] [--no-scan] [--no-base]` | Writes `OUT_DIR/record.json` from a build's bundle files (CONVENTIONS §6): package tables, the diff against the previous release in `--previous` (its `build.json` and `record.json` or syft documents), grype's scan of each architecture and the base image's layer digests. Runs in the shared workflow's publish job; the hub imports the same code from `builder.derive`. |
 
 The links baked into the generated files come from `builder.manifest.Settings`; each field can be overridden
 with an environment variable (`BUILDER_CONTROL_URL`, `BUILDER_SITE_URL`, `BUILDER_DOCS_URL`, `BUILDER_HUB_URL`, `BUILDER_ORG`,

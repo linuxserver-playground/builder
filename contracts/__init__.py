@@ -26,6 +26,7 @@ KINDS = {
     "bundle": "bundle.schema.json",
     "test-report": "test-report.schema.json",
     "control-event": "control-event.schema.json",
+    "record": "record.schema.json",
 }
 
 

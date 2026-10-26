@@ -1,0 +1,220 @@
+"""builder.derive: the record a build attaches to its release, the registry lookup and the scan's stored form."""
+
+from __future__ import annotations
+
+import copy
+import gzip
+import json
+import urllib.error
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+from builder.cli import main
+from builder.derive import record as record_module
+from builder.derive.diff import diff_builds
+from builder.derive.packages import normalise
+from builder.derive.registry import base_layers, parse_reference
+from builder.derive.vulns import ScanError, compact
+from contracts import validate
+
+from .test_contracts import _bundle
+
+Json = dict[str, Any]
+NOW = "2026-10-26T12:00:00Z"
+GRYPE_REPORT: Json = {
+    "descriptor": {"version": "0.121.0", "db": {"status": {"built": "2026-10-26T05:00:00Z"}}},
+    "matches": [
+        {
+            "vulnerability": {
+                "id": "CVE-2026-1",
+                "severity": "High",
+                "fix": {"state": "fixed", "versions": ["8.9.2-r0"]},
+                "dataSource": "https://security.alpinelinux.org/vuln/CVE-2026-1",
+                "cvss": [{"metrics": {"baseScore": 7.5}}],
+            },
+            "artifact": {"name": "curl", "version": "8.9.1-r0", "type": "apk"},
+        },
+        {  # the same finding at a second location: one row
+            "vulnerability": {"id": "CVE-2026-1", "severity": "High", "fix": {"state": "fixed"}},
+            "artifact": {"name": "curl", "version": "8.9.1-r0", "type": "apk"},
+        },
+    ],
+}
+
+
+def syft(*packages: tuple[str, str]) -> bytes:
+    artifacts = [{"name": n, "version": v, "type": "apk", "purl": f"pkg:apk/alpine/{n}@{v}"} for n, v in packages]
+    return gzip.compress(json.dumps({"artifacts": artifacts}).encode())
+
+
+class FakeGrype:
+    def __init__(self, db_date: str | None = "2026-10-26T05:00:00Z", fail: bool = False) -> None:
+        self.dates = [db_date]
+        self.fail = fail
+        self.updates = 0
+        self.errors: list[str] = []
+
+    def version(self) -> str | None:
+        return "0.121.0"
+
+    def db_date(self, *, update: bool) -> str | None:
+        if update:
+            self.updates += 1
+            return "2026-10-26T05:00:00Z"
+        return self.dates[0]
+
+    def scan(self, sbom: Path) -> Json:
+        if self.fail:
+            raise ScanError("boom")
+        assert json.loads(sbom.read_text())["artifacts"]
+        return GRYPE_REPORT
+
+
+def write_build(directory: Path, bundle: Json, packages: bytes | None) -> None:
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "build.json").write_text(json.dumps(bundle))
+    if packages is not None:
+        (directory / "packages.amd64.json.gz").write_bytes(packages)
+
+
+@pytest.fixture
+def build(tmp_path: Path) -> tuple[Path, Path]:
+    previous = _bundle()
+    current = copy.deepcopy(previous)
+    current["version"].update(upstream="4.0.21.1", upstream_clean="4.0.21.1", tag="4.0.21.1-ls2", ls_build=2)
+    out, prev = tmp_path / "out", tmp_path / "prev"
+    write_build(out, current, syft(("curl", "8.9.1-r0"), ("krb5-libs", "1.21")))
+    (out / "layers.amd64.json").write_text(json.dumps([{"index": 0, "digest": "sha256:" + "1" * 64, "size": 5}]))
+    (out / "test.amd64.json").write_text(json.dumps({"schema": 1, "success": True, "tests": []}))
+    write_build(prev, previous, syft(("curl", "8.9.0-r0")))
+    return out, prev
+
+
+def test_record_has_everything_the_hub_derives(build: tuple[Path, Path]) -> None:
+    out, prev = build
+    fetched: list[tuple[str, str | None]] = []
+
+    def fetch_base(image: str, digest: str | None) -> Json:
+        fetched.append((image, digest))
+        return {"image": image, "digest": digest, "platforms": {"amd64": {"digest": None, "layers": ["sha256:1"]}}}
+
+    rec = record_module.build_record(out, previous=prev, scanner=FakeGrype(), fetch_base=fetch_base, now=lambda: NOW)
+    validate("record", rec)
+    assert rec["tag"] == "4.0.21.1-ls2" and rec["previous_tag"] == "4.0.20.3014-ls1"
+    assert [p["name"] for p in rec["packages"]["amd64"]] == ["curl", "krb5-libs"]
+    assert rec["diff"]["classification"] == "upstream"
+    assert rec["diff"]["packages"]["amd64"]["apk"]["added"][0]["name"] == "krb5-libs"
+    assert rec["diff"]["packages"]["amd64"]["apk"]["upgraded"][0]["to"] == "8.9.1-r0"
+    assert rec["layers"]["amd64"][0]["index"] == 0 and rec["tests"]["amd64"]["success"] is True
+    scan = rec["vulns"]["amd64"]
+    assert scan["db_date"] == "2026-10-26T05:00:00Z" and scan["scanned_at"] == NOW and len(scan["matches"]) == 1
+    assert rec["base"]["platforms"]["amd64"]["layers"] == ["sha256:1"]
+    assert fetched == [("ghcr.io/linuxserver/baseimage-alpine:3.24", "sha256:" + "b" * 64)]
+    assert rec["errors"] == []
+
+
+def test_the_diff_is_the_one_the_hub_computes(build: tuple[Path, Path]) -> None:
+    out, prev = build
+    rec = record_module.build_record(out, previous=prev, fetch_base=None, now=lambda: NOW)
+    new, old = json.loads((out / "build.json").read_text()), json.loads((prev / "build.json").read_text())
+    rows = {"amd64": normalise(json.loads(gzip.decompress((out / "packages.amd64.json.gz").read_bytes())))}
+    old_rows = {"amd64": normalise(json.loads(gzip.decompress((prev / "packages.amd64.json.gz").read_bytes())))}
+    assert rec["diff"] == diff_builds(new, old, rows, old_rows)
+    assert rec["vulns"] == {} and rec["base"] is None
+
+
+def test_previous_packages_come_from_its_record_first(build: tuple[Path, Path]) -> None:
+    out, prev = build
+    (prev / "packages.amd64.json.gz").unlink()
+    rows = [{"name": "curl", "version": "8.9.1-r0", "type": "apk", "purl": "pkg:apk/alpine/curl@8.9.1-r0"}]
+    (prev / "record.json").write_text(json.dumps({"packages": {"amd64": [{**rows[0], "licenses": []}]}}))
+    rec = record_module.build_record(out, previous=prev, fetch_base=None, now=lambda: NOW)
+    assert rec["diff"]["packages"]["amd64"]["apk"]["added"][0]["name"] == "krb5-libs"
+    assert (
+        "upgraded" not in rec["diff"]["packages"]["amd64"]["apk"]
+        or not rec["diff"]["packages"]["amd64"]["apk"]["upgraded"]
+    )
+
+
+def test_first_build_and_failures_are_recorded_not_fatal(build: tuple[Path, Path]) -> None:
+    out, _ = build
+
+    def broken(image: str, digest: str | None) -> Json:
+        raise urllib.error.URLError("no route")
+
+    rec = record_module.build_record(out, scanner=FakeGrype(fail=True), fetch_base=broken, now=lambda: NOW)
+    validate("record", rec)
+    assert rec["previous_tag"] is None and rec["diff"]["classification"] == "initial"
+    assert rec["vulns"] == {} and rec["base"] is None
+    assert rec["errors"] == [
+        "vulns amd64: boom",
+        "base ghcr.io/linuxserver/baseimage-alpine:3.24: <urlopen error no route>",
+    ]
+
+
+def test_a_stale_database_is_updated_first(build: tuple[Path, Path]) -> None:
+    out, _ = build
+    grype = FakeGrype(db_date="2026-10-20T05:00:00Z")
+    rec = record_module.build_record(out, scanner=grype, fetch_base=None, now=lambda: NOW)
+    assert grype.updates == 1 and rec["vulns"]["amd64"]["db_date"] == "2026-10-26T05:00:00Z"
+
+
+def test_cli_writes_a_valid_record(build: tuple[Path, Path], capsys: pytest.CaptureFixture[str]) -> None:
+    out, prev = build
+    assert main(["record", str(out), "--previous", str(prev), "--no-scan", "--no-base"]) == 0
+    rec = json.loads((out / "record.json").read_text())
+    validate("record", rec)
+    assert "diff upstream against 4.0.20.3014-ls1" in capsys.readouterr().out
+
+
+def test_compact_merges_locations_and_keeps_the_scan_time() -> None:
+    scan = compact(GRYPE_REPORT, scanned_at=NOW)
+    assert scan["grype_version"] == "0.121.0" and scan["scanned_at"] == NOW
+    assert scan["matches"] == [
+        {
+            "package": "curl",
+            "version": "8.9.1-r0",
+            "type": "apk",
+            "id": "CVE-2026-1",
+            "severity": "high",
+            "fix_state": "fixed",
+            "fixed_in": ["8.9.2-r0"],
+            "urls": ["https://security.alpinelinux.org/vuln/CVE-2026-1"],
+            "cvss": 7.5,
+        }
+    ]
+
+
+def test_parse_reference() -> None:
+    assert parse_reference("ghcr.io/linuxserver/baseimage-alpine:3.24") == (
+        "ghcr.io",
+        "linuxserver/baseimage-alpine",
+        "3.24",
+    )
+    assert parse_reference("docker.io/alpine:3.24") == ("registry-1.docker.io", "library/alpine", "3.24")
+    assert parse_reference("alpine") == ("registry-1.docker.io", "library/alpine", "latest")
+
+
+def test_base_layers_reads_an_index() -> None:
+    calls: list[str] = []
+
+    def get(url: str, params: dict[str, str], headers: dict[str, str]) -> Json:
+        calls.append(url)
+        if url.endswith("/token"):
+            assert params == {"scope": "repository:linuxserver/baseimage-alpine:pull"}
+            return {"token": "t"}
+        assert headers["Authorization"] == "Bearer t"
+        if url.endswith("/manifests/sha256:index"):
+            return {
+                "manifests": [
+                    {"digest": "sha256:a", "platform": {"os": "linux", "architecture": "amd64"}},
+                    {"digest": "sha256:att", "platform": {"os": "unknown", "architecture": "unknown"}},
+                ]
+            }
+        return {"layers": [{"digest": "sha256:l1"}]}
+
+    base = base_layers("ghcr.io/linuxserver/baseimage-alpine:3.24", "sha256:index", get)
+    assert base["platforms"] == {"amd64": {"digest": "sha256:a", "layers": ["sha256:l1"]}}
+    assert calls[0] == "https://ghcr.io/token"

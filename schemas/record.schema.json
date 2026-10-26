@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://linuxserver-playground.github.io/builder/schemas/record.schema.json",
+  "title": "Build record (record.json)",
+  "description": "Everything the hub stores about one build, derived in the build's publish job (`builder record`) from the bundle files and the previous release of the branch. The hub ingests a release from build.json and this file; a part listed under `errors` is derived by the hub instead.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "image", "branch", "tag", "derived_at", "packages", "layers", "tests", "diff", "vulns", "errors"],
+  "properties": {
+    "schema": { "const": 1 },
+    "image": { "type": "string" },
+    "branch": { "type": "string" },
+    "tag": { "type": "string", "description": "The build's version tag, as in build.json `version.tag`." },
+    "derived_at": { "type": "string", "format": "date-time" },
+    "previous_tag": { "type": ["string", "null"], "description": "The release the diff is against; null for the first build of a branch." },
+    "packages": {
+      "type": "object",
+      "description": "The normalised package table per successful architecture, from packages.<arch>.json.gz.",
+      "propertyNames": { "enum": ["amd64", "arm64"] },
+      "additionalProperties": { "type": "array", "items": { "$ref": "#/$defs/package" } }
+    },
+    "layers": {
+      "type": "object",
+      "description": "layers.<arch>.json per successful architecture, as the ci harness wrote it (bundle.schema.json `$defs/layer`, not checked again here).",
+      "propertyNames": { "enum": ["amd64", "arm64"] },
+      "additionalProperties": { "type": "array", "items": { "type": "object" } }
+    },
+    "tests": {
+      "type": "object",
+      "description": "test.<arch>.json per architecture that has one, as the ci harness wrote it (test-report.schema.json, which the hub checks on ingest).",
+      "propertyNames": { "enum": ["amd64", "arm64"] },
+      "additionalProperties": { "type": "object" }
+    },
+    "diff": {
+      "type": "object",
+      "description": "The diff against the previous release of the branch: packages per architecture by ecosystem, config, base, sizes, the Dockerfile as a unified diff, and the classification of why the image changed.",
+      "required": ["image", "branch", "tag", "previous_tag", "classification", "reasons", "totals"],
+      "properties": {
+        "classification": { "enum": ["initial", "upstream", "linuxserver", "base", "packages", "mixed", "none"] }
+      }
+    },
+    "vulns": {
+      "type": "object",
+      "description": "grype's findings against each architecture's syft document, one database for both.",
+      "propertyNames": { "enum": ["amd64", "arm64"] },
+      "additionalProperties": { "$ref": "#/$defs/scan" }
+    },
+    "base": {
+      "type": ["object", "null"],
+      "description": "The base image's layer digests per architecture as its registry publishes them, keyed by the index digest build.json records as `base.digest`.",
+      "required": ["image", "digest", "platforms"],
+      "properties": {
+        "image": { "type": "string" },
+        "digest": { "type": ["string", "null"] },
+        "platforms": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["layers"],
+            "properties": {
+              "digest": { "type": ["string", "null"] },
+              "layers": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "errors": { "type": "array", "items": { "type": "string" }, "description": "Parts that could not be derived, and why." }
+  },
+  "$defs": {
+    "package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "type", "purl", "licenses"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "type": { "type": "string", "description": "syft's package type (apk, deb, python, npm, dotnet...)." },
+        "purl": { "type": ["string", "null"] },
+        "licenses": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "scan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["db_date", "grype_version", "matches"],
+      "properties": {
+        "db_date": { "type": "string", "description": "When the vulnerability database was built." },
+        "grype_version": { "type": "string" },
+        "scanned_at": { "type": "string" },
+        "matches": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["package", "version", "type", "id", "severity", "fix_state", "fixed_in", "urls", "cvss"],
+            "properties": {
+              "package": { "type": "string" },
+              "version": { "type": "string" },
+              "type": { "type": "string" },
+              "id": { "type": "string" },
+              "severity": { "enum": ["critical", "high", "medium", "low", "negligible", "unknown"] },
+              "fix_state": { "enum": ["fixed", "not-fixed", "wont-fix", "unknown"] },
+              "fixed_in": { "type": "array", "items": { "type": "string" } },
+              "urls": { "type": "array", "items": { "type": "string" } },
+              "cvss": { "type": ["number", "null"] }
+            }
+          }
+        }
+      }
+    }
+  }
+}
