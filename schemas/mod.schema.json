@@ -30,8 +30,25 @@
         }
       }
     },
+    "upstream": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version"],
+      "description": "The upstream a mod packages, for mods that pin a tool version. The build passes the resolved version as the MOD_VERSION build arg and tags it; the control plane checks it hourly and builds the mod when that version has no tag yet.",
+      "properties": {
+        "url": { "type": "string", "format": "uri", "description": "The project's website." },
+        "version": {
+          "description": "The same source types as image.yml, resolved by the same resolver. Not os, command or deb_repo: the scheduler runs none of those.",
+          "allOf": [
+            { "$ref": "image.schema.json#/$defs/version_source" },
+            { "properties": { "type": { "not": { "enum": ["os", "command", "deb_repo"] } } } }
+          ]
+        }
+      }
+    },
     "version": {
-      "description": "Optional upstream version source for mods that pin a tool version (sets MOD_VERSION).",
+      "deprecated": true,
+      "description": "Superseded by upstream.version and read by nothing; removed at the next MAJOR.",
       "$ref": "image.schema.json#/$defs/version_source"
     },
     "deprecated": {

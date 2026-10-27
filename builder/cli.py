@@ -111,7 +111,7 @@ def cmd_migrate(repo_dir: Path, out: str) -> int:
 def cmd_render_mod(repo_dir: Path, settings: Settings, check: bool) -> int:
     from contracts import ContractError, load_yaml, validate
 
-    from .mods import render_mod
+    from .mods import mod_findings, render_mod
 
     manifest_path = repo_dir / "mod.yml"
     try:
@@ -120,6 +120,10 @@ def cmd_render_mod(repo_dir: Path, settings: Settings, check: bool) -> int:
     except (OSError, ContractError) as exc:
         print(f"{manifest_path}: {exc}", file=sys.stderr)
         return 1
+    dockerfile = repo_dir / "Dockerfile"
+    findings = mod_findings(mod, dockerfile.read_text(encoding="utf-8") if dockerfile.is_file() else None)
+    for finding in findings:
+        print(finding, file=sys.stderr)
     stale = []
     for rel, content in render_mod(mod, settings).items():
         target = repo_dir / rel
@@ -134,7 +138,7 @@ def cmd_render_mod(repo_dir: Path, settings: Settings, check: bool) -> int:
         print(f"wrote {rel}")
     for rel in stale:
         print(f"{rel}: differs from mod.yml (run builder render-mod)", file=sys.stderr)
-    return 1 if stale else 0
+    return 1 if stale or findings else 0
 
 
 def cmd_record(out: Path, previous: str | None, scan: bool, base: bool) -> int:

@@ -42,8 +42,51 @@ USAGE_LINE = re.compile(
 )
 
 
+# Version sources the control plane's scheduler never runs (shell from a repo, docker, a package table): a mod's
+# upstream block exists for the scheduler, so it may not use them, not even inside a `combined` source.
+UNSCHEDULED_SOURCES = frozenset({"os", "command", "deb_repo"})
+ARG_MOD_VERSION = re.compile(r"^\s*ARG\s+MOD_VERSION\b", re.I | re.M)
+
+
 def branch_of(mod: Json) -> str:
     return f"{mod['target']}-{mod['name']}"
+
+
+def source_types(source: Json) -> list[str]:
+    """Every `type` in a version source, the parts of a `combined` one included."""
+    types = [str(source.get("type"))]
+    for part in source.get("sources") or []:
+        if isinstance(part, dict):
+            types.extend(source_types(part))
+    return types
+
+
+def upstream_source_label(source: Json) -> str:
+    """A short, readable name for a version source: `github_release moby/moby + github_release docker/compose`."""
+    if source.get("type") == "combined":
+        return " + ".join(upstream_source_label(p) for p in source.get("sources") or [] if isinstance(p, dict))
+    where = source.get("repo") or source.get("package") or source.get("url") or source.get("project_id")
+    return f"{source.get('type')} {where}" if where else str(source.get("type"))
+
+
+def mod_findings(mod: Json, dockerfile: str | None) -> list[str]:
+    """What a valid mod.yml with an upstream block still gets wrong: a source the scheduler will not run, or a
+    Dockerfile that never declares the MOD_VERSION build arg the build passes."""
+    upstream = mod.get("upstream") or {}
+    if not upstream:
+        return []
+    findings = []
+    unscheduled = sorted(set(source_types(upstream["version"])) & UNSCHEDULED_SOURCES)
+    if unscheduled:
+        findings.append(
+            f"mod.yml: upstream.version uses {', '.join(unscheduled)}, which the scheduler never runs; "
+            "use a typed source"
+        )
+    if dockerfile is not None and not ARG_MOD_VERSION.search(dockerfile):
+        findings.append(
+            "Dockerfile: no `ARG MOD_VERSION`, but the build passes the resolved upstream version as that arg"
+        )
+    return findings
 
 
 def render_mod(mod: Json, settings: Settings | None = None) -> dict[str, str]:
@@ -70,6 +113,11 @@ def render_mod(mod: Json, settings: Settings | None = None) -> dict[str, str]:
             for e in mod.get("env", [])
         ],
         "docs": (mod.get("docs") or "").strip(),
+        "upstream": (
+            {"url": upstream.get("url"), "source": upstream_source_label(upstream["version"])}
+            if (upstream := mod.get("upstream") or {}).get("version")
+            else None
+        ),
         "deprecated": bool(deprecated.get("status")),
         "deprecation_message": deprecated.get("message"),
     }
@@ -217,7 +265,8 @@ def convert(
         dockerfile = read("Dockerfile") or ""
         fallback = re.search(r'-z "?\$\{?MOD_VERSION|\$\{MOD_VERSION:-', dockerfile)
         result.notes.append(
-            "upstream computed MOD_VERSION in BuildImage.yml; builds here pass none, so "
+            "upstream computed MOD_VERSION in BuildImage.yml; add an upstream block so the build passes it and the "
+            "scheduler rebuilds on a new version, or "
             + ("the Dockerfile's own lookup applies" if fallback else "the Dockerfile needs a lookup of its own")
         )
 

@@ -108,6 +108,24 @@ The git tag and GitHub Release are named `[T-]<upstream>-ls<N>` and are created 
 Release's `target_commitish` is always the branch name, never a sha, so a branch's releases can be listed
 without parsing tag prefixes.
 
+### Mods
+
+A mod branch `<target>-<name>` publishes `ghcr.io/linuxserver-playground/mods:<target>-<name>` and
+`:<target>-<name>-<sha7>`; mods have no GitHub Releases and no build number. A mod that packages one upstream
+tool says so in `mod.yml` `upstream` (`url`, and `version`: any `upstream.version` source type above except `os`,
+`command` and `deb_repo`, which the scheduler never runs, `combined` included). Then:
+
+- the build resolves it with the same resolver unless it is given a `mod_version`, passes it as the
+  `MOD_VERSION` build arg (the Dockerfile declares `ARG MOD_VERSION`; its own lookup is only the fallback for
+  local builds) and the `org.opencontainers.image.version` label, and also tags `:<target>-<name>-<version>` and
+  `:<target>-<name>-<version>-<sha7>`, `<version>` being the version with the characters listed above removed;
+- the control plane checks it hourly, spread over the hour like the images, and dispatches the branch's
+  `build.yml` with that `mod_version` when `:<target>-<name>-<version>` does not exist yet. That tag is the
+  record of what was built, as Docker Hub's was for the Jenkins triggers.
+
+`combined` joins several sources, each resolved with its own `transform`, with `separator` (`-` by default),
+for a version made of two upstreams (docker and compose); the outer `transform` then applies to the result.
+
 ## 4. Namespaces
 
 | Mode | When | Image | Tags | Lifetime |

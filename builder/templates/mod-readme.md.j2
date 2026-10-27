@@ -28,6 +28,14 @@ apply the change.
 | `{{ e.name }}` | {{ '`' ~ e.default ~ '`' if e.default else ('required' if e.required else '') }} | {{ e.description }} |
 {% endfor %}
 {% endif %}
+{% if upstream %}
+
+## Versions
+
+The mod packages {% if upstream.url %}[upstream]({{ upstream.url }}){% else %}an upstream release{% endif %} (`{{ upstream.source }}`). The
+control plane checks it every hour and rebuilds the mod when a new version comes out; each build is also tagged
+with its version, so `ghcr.io/{{ org }}/mods:{{ branch }}-<version>` pins one.
+{% endif %}
 {% if docs %}
 
 ## Details

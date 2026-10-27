@@ -5,11 +5,12 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
+import pytest
 import yaml
 
 from builder.cli import main
 from builder.manifest import Settings
-from builder.mods import convert, mod_yaml, readme_parts, render_mod, rewrite_registry
+from builder.mods import convert, mod_findings, mod_yaml, readme_parts, render_mod, rewrite_registry, source_types
 from contracts import validate
 
 BUILD_IMAGE = """
@@ -181,3 +182,57 @@ def test_render_mod_and_its_check(tmp_path: Path) -> None:
     assert main(["render-mod", str(tmp_path)]) == 0
     assert main(["render-mod", str(tmp_path), "--check"]) == 0
     assert (tmp_path / "README.md").read_text(encoding="utf-8") == readme
+    assert "## Versions" not in readme and "MOD_VERSION" not in files["AGENTS.md"]
+
+
+def _versioned_mod() -> dict[str, object]:
+    return {
+        "schema": 1,
+        "name": "docker",
+        "target": "universal",
+        "summary": "Adds the docker and compose binaries to any container.",
+        "maintainers": ["thelamer"],
+        "upstream": {
+            "url": "https://github.com/moby/moby",
+            "version": {
+                "type": "combined",
+                "sources": [
+                    {"type": "github_release", "repo": "moby/moby"},
+                    {"type": "github_release", "repo": "docker/compose"},
+                ],
+            },
+        },
+    }
+
+
+def test_an_upstream_block_is_documented_and_checked(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    mod = _versioned_mod()
+    validate("mod", mod)
+    files = render_mod(mod, Settings())
+    readme = files["README.md"]
+    assert "## Versions" in readme and "[upstream](https://github.com/moby/moby)" in readme
+    assert "`github_release moby/moby + github_release docker/compose`" in readme
+    assert "ghcr.io/linuxserver-playground/mods:universal-docker-<version>" in readme
+    assert "`ARG MOD_VERSION`" in files["AGENTS.md"]
+    assert (
+        files[".github/workflows/build.yml"]
+        == render_mod({**mod, "upstream": None}, Settings())[".github/workflows/build.yml"]
+    )
+
+    (tmp_path / "mod.yml").write_text(yaml.safe_dump(mod), encoding="utf-8")
+    (tmp_path / "Dockerfile").write_text("FROM scratch\nCOPY root/ /\n", encoding="utf-8")
+    assert main(["render-mod", str(tmp_path)]) == 1
+    assert "no `ARG MOD_VERSION`" in capsys.readouterr().err
+    (tmp_path / "Dockerfile").write_text("FROM alpine AS build\nARG MOD_VERSION\nFROM scratch\n", encoding="utf-8")
+    assert main(["render-mod", str(tmp_path), "--check"]) == 0
+
+
+def test_findings_reach_into_combined_sources() -> None:
+    mod = _versioned_mod()
+    assert mod_findings(mod, None) == []
+    sources = mod["upstream"]["version"]["sources"]  # type: ignore[index]
+    sources.append({"type": "command", "run": "echo 1"})
+    assert source_types(mod["upstream"]["version"]) == ["combined", "github_release", "github_release", "command"]  # type: ignore[index]
+    assert mod_findings(mod, "ARG MOD_VERSION\n") == [
+        "mod.yml: upstream.version uses command, which the scheduler never runs; use a typed source"
+    ]

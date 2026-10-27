@@ -84,19 +84,43 @@ def test_os_source_needs_nothing_else() -> None:
     validate("image", data)
 
 
-def test_mod_manifest_minimal_and_version_ref() -> None:
-    mod = {
+def test_mod_manifest_minimal_and_upstream_ref() -> None:
+    mod: dict[str, Any] = {
         "schema": 1,
         "name": "python3",
         "target": "code-server",
         "summary": "Installs python3 and pip into code-server.",
         "maintainers": ["thelamer"],
-        "version": {"type": "pip", "package": "pip"},
     }
     validate("mod", mod)
+    mod["upstream"] = {"url": "https://pypi.org/project/pip/", "version": {"type": "pip", "package": "pip"}}
+    validate("mod", mod)
     broken = copy.deepcopy(mod)
-    broken["version"] = {"type": "github_release"}
+    broken["upstream"]["version"] = {"type": "github_release"}
     assert errors("mod", broken)
+    for kind in ("os", "command", "deb_repo"):
+        unscheduled = copy.deepcopy(mod)
+        unscheduled["upstream"]["version"] = {"type": kind, "run": "echo 1"}
+        assert errors("mod", unscheduled), kind
+    del broken["upstream"]["version"]
+    assert errors("mod", broken)
+
+
+def test_combined_source_joins_typed_sources() -> None:
+    data = _sonarr()
+    data["upstream"]["version"] = {
+        "type": "combined",
+        "separator": "-",
+        "sources": [
+            {"type": "github_release", "repo": "moby/moby", "transform": [{"regex": "^docker-v", "replace": ""}]},
+            {"type": "github_release", "repo": "docker/compose"},
+        ],
+    }
+    validate("image", data)
+    data["upstream"]["version"]["sources"] = data["upstream"]["version"]["sources"][:1]
+    assert errors("image", data)
+    data["upstream"]["version"]["sources"] = [{"type": "github_release"}, {"type": "pip", "package": "x"}]
+    assert errors("image", data)
 
 
 def _bundle() -> dict[str, Any]:

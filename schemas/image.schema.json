@@ -111,7 +111,7 @@
         "type": {
           "enum": [
             "github_release", "github_commit", "gitlab_commit", "codeberg_release", "gitea_release",
-            "json", "npm", "pip", "alpine_apk", "deb_packages", "deb_repo", "blob", "os", "command"
+            "json", "npm", "pip", "alpine_apk", "deb_packages", "deb_repo", "blob", "os", "command", "combined"
           ]
         },
         "transform": { "$ref": "#/$defs/transform" },
@@ -182,6 +182,21 @@
           "then": {
             "required": ["run"],
             "properties": { "run": { "type": "string", "description": "A bash command printing the version. Escape hatch: prefer a typed source. May use GITHUB_TOKEN." } }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "combined" } } },
+          "then": {
+            "required": ["sources"],
+            "properties": {
+              "sources": {
+                "type": "array",
+                "minItems": 2,
+                "items": { "$ref": "#/$defs/version_source" },
+                "description": "Resolved one by one, each with its own transform, and joined: a version made of two upstreams (docker and compose) changes when either does."
+              },
+              "separator": { "type": "string", "default": "-", "description": "Placed between the parts." }
+            }
           }
         }
       ]
