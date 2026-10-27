@@ -193,6 +193,8 @@ def test_render_mod_and_its_check(tmp_path: Path) -> None:
     assert main(["render-mod", str(tmp_path), "--check"]) == 0
     assert (tmp_path / "README.md").read_text(encoding="utf-8") == readme
     assert "## Versions" not in readme and "MOD_VERSION" not in files["AGENTS.md"]
+    # The example of a second mod is never the mod itself.
+    assert "universal-tshoot|ghcr.io/linuxserver-playground/mods:universal-package-install" in readme
 
 
 def _versioned_mod() -> dict[str, object]:

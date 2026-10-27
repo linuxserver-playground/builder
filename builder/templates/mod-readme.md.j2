@@ -16,7 +16,7 @@ DOCKER_MODS=ghcr.io/{{ org }}/mods:{{ branch }}
 ```
 
 Several mods are separated by `|`, for example
-`DOCKER_MODS=ghcr.io/{{ org }}/mods:{{ branch }}|ghcr.io/{{ org }}/mods:universal-tshoot`. Recreate the container to
+`DOCKER_MODS=ghcr.io/{{ org }}/mods:{{ branch }}|ghcr.io/{{ org }}/mods:{{ 'universal-package-install' if branch == 'universal-tshoot' else 'universal-tshoot' }}`. Recreate the container to
 apply the change.
 {% if env %}
 
