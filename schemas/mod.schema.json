@@ -34,15 +34,25 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["version"],
-      "description": "The upstream a mod packages, for mods that pin a tool version. The build passes the resolved version as the MOD_VERSION build arg and tags it; the control plane checks it hourly and builds the mod when that version has no tag yet.",
+      "description": "The upstream a mod packages, for mods that pin a tool version. The build passes the resolved version as the MOD_VERSION build arg and tags it; the control plane checks it hourly and builds the mod when that version has no tag yet. `version` is the default line, the one :<branch> follows; `lines` adds the further version lines upstream also ships (an older supported release, a release candidate), each checked, built and tagged on its own.",
       "properties": {
         "url": { "type": "string", "format": "uri", "description": "The project's website." },
-        "version": {
-          "description": "The same source types as image.yml, resolved by the same resolver. Not os, command or deb_repo: the scheduler runs none of those.",
-          "allOf": [
-            { "$ref": "image.schema.json#/$defs/version_source" },
-            { "properties": { "type": { "not": { "enum": ["os", "command", "deb_repo"] } } } }
-          ]
+        "version": { "$ref": "#/$defs/upstream_source" },
+        "tags": { "$ref": "#/$defs/line_tags" },
+        "lines": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Version lines besides the default one, in order of priority. A line's build tags :<branch>-<version> and its own `tags`, never :<branch>. Names are unique.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "version"],
+            "properties": {
+              "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$", "description": "Short name, e.g. 'previous' or 'unstable'; the build's `line` input." },
+              "version": { "$ref": "#/$defs/upstream_source" },
+              "tags": { "$ref": "#/$defs/line_tags" }
+            }
+          }
         }
       }
     },
@@ -58,5 +68,20 @@
       "properties": { "status": { "type": "boolean" }, "message": { "type": "string" } }
     },
     "docs": { "type": "string", "description": "Longer Markdown; the README body." }
+  },
+  "$defs": {
+    "upstream_source": {
+      "description": "The same source types as image.yml, resolved by the same resolver. Not os, command or deb_repo: the scheduler runs none of those.",
+      "allOf": [
+        { "$ref": "image.schema.json#/$defs/version_source" },
+        { "properties": { "type": { "not": { "enum": ["os", "command", "deb_repo"] } } } }
+      ]
+    },
+    "line_tags": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": ["major", "minor"] },
+      "description": "Floating tags a line's build also moves: `major` is :<branch>- and the version up to its first dot, `minor` up to its second dot (1 and 1.27 of 1.27.3). A version without that dot gets no such tag."
+    }
   }
 }

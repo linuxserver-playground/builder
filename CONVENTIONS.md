@@ -126,6 +126,17 @@ tool says so in `mod.yml` `upstream` (`url`, and `version`: any `upstream.versio
 `combined` joins several sources, each resolved with its own `transform`, with `separator` (`-` by default),
 for a version made of two upstreams (docker and compose); the outer `transform` then applies to the result.
 
+`upstream.version` is the mod's default line, the one `:<target>-<name>` follows. When upstream ships several
+version lines at once (Go's two supported releases and its release candidate), `upstream.lines` lists the others,
+each with a `name` and its own `version` source, in order of priority. Each line is checked on its own: control
+dispatches `build.yml` with `mod_version` and `line` (an input only a branch with lines has, rendered by
+`builder render-mod`), at most one build of a branch at a time, and the build of a line tags
+`:<target>-<name>-<version>` and its `-<sha7>` twin but never `:<target>-<name>` or `:<target>-<name>-<sha7>`.
+`tags` (on the default line or any other) also moves floating tags with every build of that line: `major` is
+`:<target>-<name>-X` and `minor` `:<target>-<name>-X.Y` of a version `X.Y.Z` (the version up to its first or
+second dot; a version without that dot gets no such tag). When two lines resolve to the same version, the
+earlier line builds it.
+
 ## 4. Namespaces
 
 | Mode | When | Image | Tags | Lifetime |

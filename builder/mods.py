@@ -69,24 +69,81 @@ def upstream_source_label(source: Json) -> str:
     return f"{source.get('type')} {where}" if where else str(source.get("type"))
 
 
-def mod_findings(mod: Json, dockerfile: str | None) -> list[str]:
-    """What a valid mod.yml with an upstream block still gets wrong: a source the scheduler will not run, or a
-    Dockerfile that never declares the MOD_VERSION build arg the build passes."""
+def upstream_lines(mod: Json) -> list[Json]:
+    """The version lines of a mod's upstream block, the default line first: `name` (None for the default line,
+    the one `:<branch>` follows), `version` (the source) and `tags` (the floating tags it also moves)."""
     upstream = mod.get("upstream") or {}
-    if not upstream:
+    if not upstream.get("version"):
+        return []
+    lines = [{"name": None, "version": upstream["version"], "tags": list(upstream.get("tags") or [])}]
+    for line in upstream.get("lines") or []:
+        lines.append({"name": line["name"], "version": line["version"], "tags": list(line.get("tags") or [])})
+    return lines
+
+
+def line_tag_suffixes(version: str, kinds: list[str]) -> list[str]:
+    """The floating tag suffixes a line's build moves for `version` (already stripped of the characters a tag
+    cannot hold): `major` is the version up to its first dot, `minor` up to its second; a version without that
+    dot gets no such tag. Ordered major first, as the build tags them."""
+    parts = version.split(".")
+    suffixes = []
+    if "major" in kinds and len(parts) >= 2:
+        suffixes.append(parts[0])
+    if "minor" in kinds and len(parts) >= 3:
+        suffixes.append(".".join(parts[:2]))
+    return [s for s in suffixes if s and s != version]
+
+
+def mod_findings(mod: Json, dockerfile: str | None) -> list[str]:
+    """What a valid mod.yml with an upstream block still gets wrong: a source the scheduler will not run, two
+    lines of one name, or a Dockerfile that never declares the MOD_VERSION build arg the build passes."""
+    lines = upstream_lines(mod)
+    if not lines:
         return []
     findings = []
-    unscheduled = sorted(set(source_types(upstream["version"])) & UNSCHEDULED_SOURCES)
-    if unscheduled:
-        findings.append(
-            f"mod.yml: upstream.version uses {', '.join(unscheduled)}, which the scheduler never runs; "
-            "use a typed source"
-        )
+    for line in lines:
+        where = "upstream.version" if line["name"] is None else f"upstream.lines[{line['name']}].version"
+        unscheduled = sorted(set(source_types(line["version"])) & UNSCHEDULED_SOURCES)
+        if unscheduled:
+            findings.append(
+                f"mod.yml: {where} uses {', '.join(unscheduled)}, which the scheduler never runs; use a typed source"
+            )
+    names = [line["name"] for line in lines[1:]]
+    if duplicates := sorted({n for n in names if names.count(n) > 1}):
+        findings.append(f"mod.yml: upstream.lines repeats {', '.join(duplicates)}; line names are unique")
     if dockerfile is not None and not ARG_MOD_VERSION.search(dockerfile):
         findings.append(
             "Dockerfile: no `ARG MOD_VERSION`, but the build passes the resolved upstream version as that arg"
         )
     return findings
+
+
+LINE_INPUT = """      line:
+        description: Version line to build, a name from mod.yml upstream.lines; empty builds the default line
+        type: string
+        default: ""
+"""
+
+
+def build_workflow(mod: Json, template: str) -> str:
+    """The branch's build.yml: the shared caller, plus the `line` dispatch input when mod.yml has version lines (the
+    control plane names the line it dispatches). Every other branch keeps the identical file."""
+    if not (mod.get("upstream") or {}).get("lines"):
+        return template
+    anchor_input = "        description: Optional MOD_VERSION build arg, also published as an extra tag\n"
+    anchor_input += '        type: string\n        default: ""\n'
+    anchor_with = "      mod_version: ${{ github.event.inputs.mod_version || '' }}\n"
+    header = "Generated for every docker-mods branch; identical on each."
+    for anchor in (anchor_input, anchor_with, header):
+        if template.count(anchor) != 1:
+            raise ValueError(f"mod-build.yml template changed; cannot place the line input at {anchor!r}")
+    out = template.replace(anchor_input, anchor_input + LINE_INPUT)
+    out = out.replace(anchor_with, anchor_with + "      mod_line: ${{ github.event.inputs.line || '' }}\n")
+    return out.replace(
+        header,
+        "Generated for every docker-mods branch; identical on each but for the `line` input,\n"
+        "# which only mods with version lines (mod.yml upstream.lines) have.",
+    )
 
 
 def render_mod(mod: Json, settings: Settings | None = None) -> dict[str, str]:
@@ -114,7 +171,11 @@ def render_mod(mod: Json, settings: Settings | None = None) -> dict[str, str]:
         ],
         "docs": (mod.get("docs") or "").strip(),
         "upstream": (
-            {"url": upstream.get("url"), "source": upstream_source_label(upstream["version"])}
+            {
+                "url": upstream.get("url"),
+                "source": upstream_source_label(upstream["version"]),
+                "lines": [{**line, "source": upstream_source_label(line["version"])} for line in upstream_lines(mod)],
+            }
             if (upstream := mod.get("upstream") or {}).get("version")
             else None
         ),
@@ -125,7 +186,9 @@ def render_mod(mod: Json, settings: Settings | None = None) -> dict[str, str]:
     return {
         "README.md": env.get_template("mod-readme.md.j2").render(ctx).rstrip("\n") + "\n",
         "AGENTS.md": env.get_template("agents/mod.md.j2").render(ctx).rstrip("\n") + "\n",
-        ".github/workflows/build.yml": (template_dir / "mod-build.yml").read_text(encoding="utf-8"),
+        ".github/workflows/build.yml": build_workflow(
+            mod, (template_dir / "mod-build.yml").read_text(encoding="utf-8")
+        ),
     }
 
 

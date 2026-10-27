@@ -10,8 +10,18 @@ import yaml
 
 from builder.cli import main
 from builder.manifest import Settings
-from builder.mods import convert, mod_findings, mod_yaml, readme_parts, render_mod, rewrite_registry, source_types
-from contracts import validate
+from builder.mods import (
+    convert,
+    line_tag_suffixes,
+    mod_findings,
+    mod_yaml,
+    readme_parts,
+    render_mod,
+    rewrite_registry,
+    source_types,
+    upstream_lines,
+)
+from contracts import ContractError, validate
 
 BUILD_IMAGE = """
 env:
@@ -236,3 +246,78 @@ def test_findings_reach_into_combined_sources() -> None:
     assert mod_findings(mod, "ARG MOD_VERSION\n") == [
         "mod.yml: upstream.version uses command, which the scheduler never runs; use a typed source"
     ]
+
+
+def _golang_mod() -> dict[str, object]:
+    def go(url: str, jq: str) -> dict[str, object]:
+        return {"type": "json", "url": url, "jq": jq, "transform": [{"regex": "^go", "replace": ""}]}
+
+    return {
+        "schema": 1,
+        "name": "golang",
+        "target": "code-server",
+        "summary": "This mod adds golang/go to code-server.",
+        "maintainers": ["thelamer"],
+        "upstream": {
+            "url": "https://go.dev/",
+            "version": go("https://go.dev/dl/?mode=json", ".[0].version"),
+            "tags": ["major", "minor"],
+            "lines": [
+                {"name": "previous", "version": go("https://go.dev/dl/?mode=json", ".[1].version"), "tags": ["minor"]},
+                {"name": "unstable", "version": go("https://go.dev/dl/?mode=json&include=all", ".[0].version")},
+            ],
+        },
+    }
+
+
+def test_version_lines_are_validated_documented_and_dispatchable() -> None:
+    mod = _golang_mod()
+    validate("mod", mod)
+    assert [line["name"] for line in upstream_lines(mod)] == [None, "previous", "unstable"]
+    assert upstream_lines(mod)[0]["tags"] == ["major", "minor"] and upstream_lines(mod)[2]["tags"] == []
+
+    files = render_mod(mod, Settings())
+    readme, workflow = files["README.md"], files[".github/workflows/build.yml"]
+    assert "| default | `json https://go.dev/dl/?mode=json` | `code-server-golang`, `code-server-golang-X`," in readme
+    assert (
+        "| previous | `json https://go.dev/dl/?mode=json` | `code-server-golang-X.Y`, `code-server-golang-X.Y.Z` |"
+        in readme
+    )
+    assert "| unstable | `json https://go.dev/dl/?mode=json&include=all` | `code-server-golang-X.Y.Z` |" in readme
+    assert "(previous, unstable)" in files["AGENTS.md"]
+    # Only a mod with lines gets the line input; every other branch keeps the identical file.
+    assert "      line:\n" in workflow and "mod_line: ${{ github.event.inputs.line || '' }}" in workflow
+    plain = render_mod(_versioned_mod(), Settings())[".github/workflows/build.yml"]
+    assert "line" not in plain.replace("pipeline", "")
+    tagged = _golang_mod()
+    del tagged["upstream"]["lines"]  # type: ignore[attr-defined]
+    validate("mod", tagged)
+    assert render_mod(tagged, Settings())[".github/workflows/build.yml"] == plain
+    assert "| default |" in render_mod(tagged, Settings())["README.md"]
+
+    for bad in ({"name": "Previous", "version": {"type": "pip", "package": "x"}}, {"name": "x"}):
+        broken = _golang_mod()
+        broken["upstream"]["lines"] = [bad]  # type: ignore[index]
+        with pytest.raises(ContractError):
+            validate("mod", broken)
+    broken = _golang_mod()
+    broken["upstream"]["tags"] = ["patch"]  # type: ignore[index]
+    with pytest.raises(ContractError):
+        validate("mod", broken)
+
+
+def test_line_findings_and_tag_suffixes() -> None:
+    mod = _golang_mod()
+    assert mod_findings(mod, "ARG MOD_VERSION\n") == []
+    lines = mod["upstream"]["lines"]  # type: ignore[index]
+    lines.append({"name": "previous", "version": {"type": "command", "run": "echo 1"}})
+    assert mod_findings(mod, "ARG MOD_VERSION\n") == [
+        "mod.yml: upstream.lines[previous].version uses command, which the scheduler never runs; use a typed source",
+        "mod.yml: upstream.lines repeats previous; line names are unique",
+    ]
+    assert line_tag_suffixes("1.27.3", ["major", "minor"]) == ["1", "1.27"]
+    assert line_tag_suffixes("1.26.10", ["minor"]) == ["1.26"]
+    assert line_tag_suffixes("1.27rc3", ["minor"]) == []
+    assert line_tag_suffixes("1.27", ["major", "minor"]) == ["1"]
+    assert line_tag_suffixes("20260101", ["major", "minor"]) == []
+    assert line_tag_suffixes("1.27.3", []) == []

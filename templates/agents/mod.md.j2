@@ -30,6 +30,11 @@ extracted over `/` when a container starts with `DOCKER_MODS=` set.
   `{{ target }}-{{ name }}-<version>` tag yet. The build passes that version as the `MOD_VERSION` build arg:
   keep `ARG MOD_VERSION` in the Dockerfile and build that version; a lookup of its own is only the fallback for
   local builds.
+{% if upstream.lines|length > 1 %}
+- `upstream.lines` adds version lines besides the default one ({{ upstream.lines[1:]|map(attribute='name')|join(', ') }}).
+  Each is checked on its own and dispatched with the `line` input; its build tags `<version>` and the line's
+  `tags`, never the bare `{{ target }}-{{ name }}`. `build.yml` carries that input only on branches with lines.
+{% endif %}
 {% endif %}
 
 ## Validate locally

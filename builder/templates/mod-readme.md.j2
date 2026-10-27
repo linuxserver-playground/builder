@@ -35,6 +35,19 @@ apply the change.
 The mod packages {% if upstream.url %}[upstream]({{ upstream.url }}){% else %}an upstream release{% endif %} (`{{ upstream.source }}`). The
 control plane checks it every hour and rebuilds the mod when a new version comes out; each build is also tagged
 with its version, so `ghcr.io/{{ org }}/mods:{{ branch }}-<version>` pins one.
+{% if upstream.lines|length > 1 or upstream.lines[0].tags %}
+
+{% if upstream.lines|length > 1 %}
+Upstream ships several version lines, and each is checked and built on its own. `:{{ branch }}` follows the
+default line; a line's own tags follow its newest version.
+{% endif %}
+
+| Line | Source | Tags of a version X.Y.Z |
+| --- | --- | --- |
+{% for line in upstream.lines %}
+| {{ line.name or 'default' }} | `{{ line.source }}` | {% if not line.name %}`{{ branch }}`, {% endif %}{% if 'major' in line.tags %}`{{ branch }}-X`, {% endif %}{% if 'minor' in line.tags %}`{{ branch }}-X.Y`, {% endif %}`{{ branch }}-X.Y.Z` |
+{% endfor %}
+{% endif %}
 {% endif %}
 {% if docs %}
 
