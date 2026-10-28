@@ -304,7 +304,7 @@ renders the fleet dashboard from the control plane's API.
 | `{SITE_URL}/fleet/...` | site | The fleet dashboard, rendered from the control plane's JSON API with cookie sign-in. |
 | `{HUB_URL}/builds/{image}/` | hub | A redirect to the image page's build list, `{SITE_URL}/images/{image}/#builds`. |
 | `{HUB_URL}/stores/...`, `{HUB_URL}/api/v1/...` | hub | Store templates and the static API. |
-| `{CONTROL_URL}/builds/{owner}/{repo}/{run_id}` | control | Live status of one run: jobs, timings, result, links to the hub page once published. |
+| `{CONTROL_URL}/builds/{owner}/{repo}/{run_id}` | control | Live status of one run: jobs, timings, result, links to the site's build page once published. |
 | `{CONTROL_URL}/images/{name}` and `/images/{name}/{tag}` | control | Fleet-board drill-down; README badges link here. |
 | `{CONTROL_URL}/badge/{name}/{tag}.svg` | control | CI status badge for the latest live build with that release tag. |
 | `{CONTROL_URL}/events` | control | Signed `build.started` / `build.summary` intake (above). |
