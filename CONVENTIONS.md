@@ -239,6 +239,14 @@ after the Release and before the `build.summary` event (§10), and on its own wh
 `reason: pages` (filling or repairing a site). Each deploy
 is complete by itself, so a lost one is repaired by the next. The Releases stay the archive of everything.
 
+Each build's folder also carries copies of its per-build documents as the hub's API serves them, without the API's
+envelope: `build.json` (the Release asset as it is), `report.json`, `tests.json`, `diff.json`, `layers.<arch>.json`
+and `packages.<arch>.json`. One implementation shapes them for both, `builder.derive.documents` (with
+`builder.derive.layers`): the hub renders its routes with it, and the pages assembler writes these copies with it,
+from `record.json` or, for a release without one, from the other assets with the code `builder record` runs. The
+hub is the API for them (§10): nothing may depend on these copies. In them every link (`links`) points at the
+repository's Pages, and `report.json` has no `is_newest`, which changes after the release.
+
 | Path | What |
 | --- | --- |
 | `PAGES/index.json` | `{"schema": "lsio-pages/1", "repo": "<owner>/<repo>", "generated_at": "<ISO 8601>", "keep": 5, "builds": [...]}`, each build `{"tag", "branch", "published_at", "arches": [...]}`, newest first |

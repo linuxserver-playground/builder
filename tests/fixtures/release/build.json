@@ -1,0 +1,383 @@
+{
+  "schema": 1,
+  "image": "sonarr",
+  "repository": "linuxserver-playground/docker-sonarr",
+  "branch": "master",
+  "mode": "live",
+  "version": {
+    "upstream": "4.0.20.3014",
+    "upstream_clean": "4.0.20.3014",
+    "semver": "4.0.20",
+    "release_tag": "latest",
+    "tags": [
+      "latest",
+      "4.0.20.3014-ls1",
+      "version-4.0.20.3014",
+      "4.0.20",
+      "amd64-latest",
+      "amd64-4.0.20.3014-ls1",
+      "amd64-version-4.0.20.3014",
+      "amd64-4.0.20",
+      "arm64v8-latest",
+      "arm64v8-4.0.20.3014-ls1",
+      "arm64v8-version-4.0.20.3014",
+      "arm64v8-4.0.20"
+    ],
+    "source": "json",
+    "source_url": "https://services.sonarr.tv/v1/releases",
+    "ls_build": 1,
+    "tag": "4.0.20.3014-ls1"
+  },
+  "commit": "42585b63d894096a69229839a8b5321c03e99efd",
+  "created": "2026-10-24T20:55:30Z",
+  "reason": "rebuild",
+  "base": {
+    "family": "alpine",
+    "image": "ghcr.io/linuxserver/baseimage-alpine:3.24",
+    "digest": "sha256:52106d187a66ccb92e3289cb6dd25c549cb0b6b7bfec38a51994434c96db2d35"
+  },
+  "platforms": [
+    {
+      "arch": "amd64",
+      "result": "success",
+      "digest": "sha256:826066d457dbba4d75c8a2ddaaa154cd4319a124c53b61869ccef9e8e02fd7c8",
+      "size": 87898777,
+      "uncompressed_size": 205151880,
+      "layers": 9,
+      "runner": "Linux-X64",
+      "build_seconds": 24
+    },
+    {
+      "arch": "arm64",
+      "result": "success",
+      "digest": "sha256:144aa415bad469fa52c7577d369f2a0705cd3c8b6b5d15d3dae81fea98ab577c",
+      "size": 85734339,
+      "uncompressed_size": 224812020,
+      "layers": 9,
+      "runner": "Linux-ARM64",
+      "build_seconds": 25
+    }
+  ],
+  "labels": {
+    "build_version": "Linuxserver.io version:- 4.0.20.3014-ls1 Build-date:- 2026-10-24T20:50:40Z",
+    "io.linuxserver.image.base": "ghcr.io/linuxserver/baseimage-alpine:3.24@sha256:52106d187a66ccb92e3289cb6dd25c549cb0b6b7bfec38a51994434c96db2d35",
+    "io.linuxserver.image.branch": "master",
+    "io.linuxserver.image.mode": "live",
+    "io.linuxserver.image.upstream": "4.0.20.3014",
+    "maintainer": "thespad",
+    "org.opencontainers.image.authors": "linuxserver.io",
+    "org.opencontainers.image.created": "2026-10-24T20:50:40Z",
+    "org.opencontainers.image.description": "Sonarr (formerly NZBdrone) is a PVR for usenet and bittorrent users.",
+    "org.opencontainers.image.documentation": "https://docs.linuxserver.io/images/docker-sonarr",
+    "org.opencontainers.image.licenses": "GPL-3.0-only",
+    "org.opencontainers.image.ref.name": "809c5810b5f69228898d5fcfc087eb89d5a2ecf5",
+    "org.opencontainers.image.revision": "42585b63d894096a69229839a8b5321c03e99efd",
+    "org.opencontainers.image.source": "https://github.com/linuxserver-playground/docker-sonarr",
+    "org.opencontainers.image.title": "Sonarr",
+    "org.opencontainers.image.url": "https://github.com/linuxserver-playground/docker-sonarr/packages",
+    "org.opencontainers.image.vendor": "linuxserver.io",
+    "org.opencontainers.image.version": "4.0.20.3014-ls1"
+  },
+  "config": {
+    "env": [
+      "PATH=/lsiopy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "PS1=$(whoami)@$(hostname):$(pwd)\\$ ",
+      "HOME=/root",
+      "TERM=xterm",
+      "S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0",
+      "S6_VERBOSITY=1",
+      "S6_STAGE2_HOOK=/docker-mods",
+      "VIRTUAL_ENV=/lsiopy",
+      "LSIO_FIRST_PARTY=true",
+      "XDG_CONFIG_HOME=/config/xdg",
+      "SONARR_CHANNEL=v4-stable",
+      "SONARR_BRANCH=main",
+      "COMPlus_EnableDiagnostics=0",
+      "TMPDIR=/run/sonarr-temp"
+    ],
+    "exposed_ports": [
+      "8989/tcp"
+    ],
+    "volumes": [
+      "/config"
+    ],
+    "entrypoint": [
+      "/init"
+    ],
+    "working_dir": "/"
+  },
+  "dockerfile": {
+    "amd64": "# syntax=docker/dockerfile:1\n\nFROM ghcr.io/linuxserver/baseimage-alpine:3.24\n\nENV LSIO_FIRST_PARTY=true\n\n# set version label\nARG BUILD_DATE\nARG VERSION\nARG SONARR_VERSION\nLABEL build_version=\"Linuxserver.io version:- ${VERSION} Build-date:- ${BUILD_DATE}\"\nLABEL maintainer=\"thespad\"\n\n# set environment variables\nENV XDG_CONFIG_HOME=\"/config/xdg\" \\\n  SONARR_CHANNEL=\"v4-stable\" \\\n  SONARR_BRANCH=\"main\" \\\n  COMPlus_EnableDiagnostics=0 \\\n  TMPDIR=/run/sonarr-temp\n\nRUN \\\n  echo \"**** install packages ****\" && \\\n  apk add --no-cache \\\n    icu-libs \\\n    krb5-libs \\\n    sqlite-libs \\\n    xmlstarlet && \\\n  echo \"**** install sonarr ****\" && \\\n  mkdir -p /app/sonarr/bin && \\\n  if [ -z ${SONARR_VERSION+x} ]; then \\\n    SONARR_VERSION=$(curl -sX GET http://services.sonarr.tv/v1/releases \\\n    | jq -r \"first(.[] | select(.releaseChannel==\\\"${SONARR_CHANNEL}\\\") | .version)\"); \\\n  fi && \\\n  curl -o \\\n    /tmp/sonarr.tar.gz -L \\\n    \"https://services.sonarr.tv/v1/update/${SONARR_BRANCH}/download?version=${SONARR_VERSION}&os=linuxmusl&runtime=netcore&arch=x64\" && \\\n  tar xzf \\\n    /tmp/sonarr.tar.gz -C \\\n    /app/sonarr/bin --strip-components=1 && \\\n  echo -e \"UpdateMethod=docker\\nBranch=${SONARR_BRANCH}\\nPackageVersion=${VERSION:-LocalBuild}\\nPackageAuthor=[linuxserver.io](https://linuxserver.io)\" > /app/sonarr/package_info && \\\n  printf \"Linuxserver.io version: ${VERSION}\\nBuild-date: ${BUILD_DATE}\" > /build_version && \\\n  echo \"**** cleanup ****\" && \\\n  rm -rf \\\n    /app/sonarr/bin/Sonarr.Update \\\n    /tmp/*\n\n# add local files\nCOPY root/ /\n\n# ports and volumes\nEXPOSE 8989\n\nVOLUME /config\n",
+    "arm64": "# syntax=docker/dockerfile:1\n\nFROM ghcr.io/linuxserver/baseimage-alpine:arm64v8-3.24\n\nENV LSIO_FIRST_PARTY=true\n\n# set version label\nARG BUILD_DATE\nARG VERSION\nARG SONARR_VERSION\nLABEL build_version=\"Linuxserver.io version:- ${VERSION} Build-date:- ${BUILD_DATE}\"\nLABEL maintainer=\"thespad\"\n\n# set environment variables\nENV XDG_CONFIG_HOME=\"/config/xdg\" \\\n  SONARR_CHANNEL=\"v4-stable\" \\\n  SONARR_BRANCH=\"main\" \\\n  COMPlus_EnableDiagnostics=0 \\\n  TMPDIR=/run/sonarr-temp\n\nRUN \\\n  echo \"**** install packages ****\" && \\\n  apk add --no-cache \\\n    icu-libs \\\n    krb5-libs \\\n    sqlite-libs \\\n    xmlstarlet && \\\n  echo \"**** install sonarr ****\" && \\\n  mkdir -p /app/sonarr/bin && \\\n  if [ -z ${SONARR_VERSION+x} ]; then \\\n    SONARR_VERSION=$(curl -sX GET http://services.sonarr.tv/v1/releases \\\n    | jq -r \"first(.[] | select(.releaseChannel==\\\"${SONARR_CHANNEL}\\\") | .version)\"); \\\n  fi && \\\n  curl -o \\\n    /tmp/sonarr.tar.gz -L \\\n    \"https://services.sonarr.tv/v1/update/${SONARR_BRANCH}/download?version=${SONARR_VERSION}&os=linuxmusl&runtime=netcore&arch=arm64\" && \\\n  tar xzf \\\n    /tmp/sonarr.tar.gz -C \\\n    /app/sonarr/bin --strip-components=1 && \\\n  echo -e \"UpdateMethod=docker\\nBranch=${SONARR_BRANCH}\\nPackageVersion=${VERSION:-LocalBuild}\\nPackageAuthor=[linuxserver.io](https://linuxserver.io)\" > /app/sonarr/package_info && \\\n  printf \"Linuxserver.io version: ${VERSION}\\nBuild-date: ${BUILD_DATE}\" > /build_version && \\\n  echo \"**** cleanup ****\" && \\\n  rm -rf \\\n    /app/sonarr/bin/Sonarr.Update \\\n    /tmp/*\n\n# add local files\nCOPY root/ /\n\n# ports and volumes\nEXPOSE 8989\n\nVOLUME /config\n"
+  },
+  "test": {
+    "enabled": true,
+    "success": true,
+    "per_arch": {
+      "amd64": true,
+      "arm64": true
+    },
+    "report_url": "https://ci.thelamer.duckdns.org:8443/builds/linuxserver-playground/docker-sonarr/40131556248"
+  },
+  "assets": [
+    {
+      "name": "packages.amd64.json.gz",
+      "size": 334352,
+      "sha256": "f2879fd1fb9569912deccd51c9ebcdc9e7d04bc22598dd23c5ee8124e84850e7",
+      "url": "https://github.com/linuxserver-playground/docker-sonarr/releases/download/4.0.20.3014-ls1/packages.amd64.json.gz"
+    },
+    {
+      "name": "layers.amd64.json",
+      "size": 5003,
+      "sha256": "48b76a26b634222d51c54a1e723ba47273c052c99adc87f0dd57e23d62d681b7",
+      "url": "https://github.com/linuxserver-playground/docker-sonarr/releases/download/4.0.20.3014-ls1/layers.amd64.json"
+    },
+    {
+      "name": "files.amd64.json.gz",
+      "size": 59739,
+      "sha256": "e2a41452e4ca14fcefbdf91d1c09b7eecf195e8e8dde1820f3d818d3f71d31f4",
+      "url": "https://github.com/linuxserver-playground/docker-sonarr/releases/download/4.0.20.3014-ls1/files.amd64.json.gz"
+    },
+    {
+      "name": "test.amd64.json",
+      "size": 2165,
+      "sha256": "fb5a53ddf876dc51a4b4a8d7b0f57db710d086c98972178ccd2b5667b690c26a",
+      "url": "https://github.com/linuxserver-playground/docker-sonarr/releases/download/4.0.20.3014-ls1/test.amd64.json"
+    },
+    {
+      "name": "test.amd64.tar.gz",
+      "size": 348082,
+      "sha256": "edea298a5ce9fd3b1f49619993fcfedac28d2fe2d07e1b1ebad311ef3cd9ec89",
+      "url": "https://github.com/linuxserver-playground/docker-sonarr/releases/download/4.0.20.3014-ls1/test.amd64.tar.gz"
+    },
+    {
+      "name": "package_versions.amd64.txt",
+      "size": 20520,
+      "sha256": "6763446809ae1ca47a818593b63341dc6b0ab8dd24807a9a98f55ba105d4262d",
+      "url": "https://github.com/linuxserver-playground/docker-sonarr/releases/download/4.0.20.3014-ls1/package_versions.amd64.txt"
+    },
+    {
+      "name": "packages.arm64.json.gz",
+      "size": 333936,
+      "sha256": "a225b2e299b26fdcd00f1b9efcde1112959abe187fd4d800b3dcfea5b32554d8",
+      "url": "https://github.com/linuxserver-playground/docker-sonarr/releases/download/4.0.20.3014-ls1/packages.arm64.json.gz"
+    },
+    {
+      "name": "layers.arm64.json",
+      "size": 5005,
+      "sha256": "81ddeab10b93228582688111950e03121407814f643567dab03b1cb4ebf6e828",
+      "url": "https://github.com/linuxserver-playground/docker-sonarr/releases/download/4.0.20.3014-ls1/layers.arm64.json"
+    },
+    {
+      "name": "files.arm64.json.gz",
+      "size": 59451,
+      "sha256": "21104c6510c25f7a1b7dd09c52a1790beaf96a15da41aec5dd9b5b3db83cd85f",
+      "url": "https://github.com/linuxserver-playground/docker-sonarr/releases/download/4.0.20.3014-ls1/files.arm64.json.gz"
+    },
+    {
+      "name": "test.arm64.json",
+      "size": 2168,
+      "sha256": "0d7b6e2531b1f16d5117a28b4522cebff2f520a2b6ba23ad81bdc2a3a40a1820",
+      "url": "https://github.com/linuxserver-playground/docker-sonarr/releases/download/4.0.20.3014-ls1/test.arm64.json"
+    },
+    {
+      "name": "test.arm64.tar.gz",
+      "size": 349441,
+      "sha256": "477cf7450adf0eb8d9c68e9899167dc7ff953edfc0d98c412cefa529ef2911e3",
+      "url": "https://github.com/linuxserver-playground/docker-sonarr/releases/download/4.0.20.3014-ls1/test.arm64.tar.gz"
+    },
+    {
+      "name": "package_versions.arm64.txt",
+      "size": 20900,
+      "sha256": "afe9dfd578b27f9b3a165e3948d6a8ba50d6a49061c4a7a573f78636c93bbe4c",
+      "url": "https://github.com/linuxserver-playground/docker-sonarr/releases/download/4.0.20.3014-ls1/package_versions.arm64.txt"
+    }
+  ],
+  "workflow": {
+    "run_id": 40131556248,
+    "run_url": "https://github.com/linuxserver-playground/docker-sonarr/actions/runs/40131556248",
+    "workflows_ref": "v1",
+    "ci_version": "latest"
+  },
+  "index_digest": "sha256:d7f6f39a33bcf16c44930314df377f79567ea2617174dd173dfe2e13c85a6591",
+  "init_graph": {
+    "units": [
+      {
+        "name": "ci-service-check",
+        "type": "oneshot",
+        "depends_on": [
+          "legacy-services"
+        ],
+        "source": "base"
+      },
+      {
+        "name": "init-adduser",
+        "type": "oneshot",
+        "depends_on": [
+          "init-migrations"
+        ],
+        "source": "base"
+      },
+      {
+        "name": "init-config",
+        "type": "oneshot",
+        "depends_on": [
+          "init-os-end"
+        ],
+        "source": "base"
+      },
+      {
+        "name": "init-config-end",
+        "type": "oneshot",
+        "depends_on": [
+          "init-config",
+          "init-crontab-config",
+          "init-sonarr-config"
+        ],
+        "source": "base"
+      },
+      {
+        "name": "init-crontab-config",
+        "type": "oneshot",
+        "depends_on": [
+          "init-config"
+        ],
+        "source": "base"
+      },
+      {
+        "name": "init-custom-files",
+        "type": "oneshot",
+        "depends_on": [
+          "init-mods-end"
+        ],
+        "source": "base"
+      },
+      {
+        "name": "init-device-perms",
+        "type": "oneshot",
+        "depends_on": [
+          "init-adduser"
+        ],
+        "source": "base"
+      },
+      {
+        "name": "init-envfile",
+        "type": "oneshot",
+        "depends_on": [],
+        "source": "base"
+      },
+      {
+        "name": "init-migrations",
+        "type": "oneshot",
+        "depends_on": [],
+        "source": "base"
+      },
+      {
+        "name": "init-mods",
+        "type": "oneshot",
+        "depends_on": [
+          "init-config-end"
+        ],
+        "source": "base"
+      },
+      {
+        "name": "init-mods-end",
+        "type": "oneshot",
+        "depends_on": [
+          "init-mods-package-install"
+        ],
+        "source": "base"
+      },
+      {
+        "name": "init-mods-package-install",
+        "type": "oneshot",
+        "depends_on": [
+          "init-mods"
+        ],
+        "source": "base"
+      },
+      {
+        "name": "init-os-end",
+        "type": "oneshot",
+        "depends_on": [
+          "init-adduser",
+          "init-device-perms",
+          "init-envfile"
+        ],
+        "source": "base"
+      },
+      {
+        "name": "init-services",
+        "type": "oneshot",
+        "depends_on": [
+          "init-custom-files"
+        ],
+        "source": "base"
+      },
+      {
+        "name": "init-sonarr-config",
+        "type": "oneshot",
+        "depends_on": [
+          "init-config"
+        ],
+        "source": "image",
+        "script": "#!/usr/bin/with-contenv bash\n# shellcheck shell=bash\n\nmkdir -p /run/sonarr-temp\n\nif [[ -z ${LSIO_NON_ROOT_USER} ]]; then\n    lsiown -R abc:abc \\\n        /config \\\n        /run/sonarr-temp\nfi\n"
+      },
+      {
+        "name": "svc-cron",
+        "type": "longrun",
+        "depends_on": [
+          "init-services"
+        ],
+        "source": "base"
+      },
+      {
+        "name": "svc-sonarr",
+        "type": "longrun",
+        "depends_on": [
+          "init-services"
+        ],
+        "source": "image",
+        "script": "#!/usr/bin/with-contenv bash\n# shellcheck shell=bash\n\nexport TERM=DUMB\n\nif [[ -z ${LSIO_NON_ROOT_USER} ]]; then\n    exec \\\n        s6-notifyoncheck -d -n 300 -w 1000 \\\n            cd /app/sonarr/bin s6-setuidgid abc /app/sonarr/bin/Sonarr \\\n            -nobrowser -data=/config\nelse\n    exec \\\n        s6-notifyoncheck -d -n 300 -w 1000 \\\n            cd /app/sonarr/bin /app/sonarr/bin/Sonarr \\\n            -nobrowser -data=/config\nfi\n"
+      },
+      {
+        "name": "user",
+        "type": "bundle",
+        "depends_on": [],
+        "source": "base"
+      },
+      {
+        "name": "user2",
+        "type": "bundle",
+        "depends_on": [],
+        "source": "base"
+      }
+    ],
+    "d2": "\"sonarr:latest\": {\n  docker-mods\n  base {\n    fix-attr +\\nlegacy cont-init\n  }\n  docker-mods -> base\n  legacy-services\n  custom services\n  init-services -> legacy-services\n  init-services -> custom services\n  custom services -> legacy-services\n  legacy-services -> ci-service-check\n  init-migrations -> init-adduser\n  init-os-end -> init-config\n  init-config -> init-config-end\n  init-crontab-config -> init-config-end\n  init-sonarr-config -> init-config-end\n  init-config -> init-crontab-config\n  init-mods-end -> init-custom-files\n  init-adduser -> init-device-perms\n  base -> init-envfile\n  base -> init-migrations\n  init-config-end -> init-mods\n  init-mods-package-install -> init-mods-end\n  init-mods -> init-mods-package-install\n  init-adduser -> init-os-end\n  init-device-perms -> init-os-end\n  init-envfile -> init-os-end\n  init-custom-files -> init-services\n  init-config -> init-sonarr-config\n  init-services -> svc-cron\n  svc-cron -> legacy-services\n  init-services -> svc-sonarr\n  svc-sonarr -> legacy-services\n}\nBase Images: {\n  \"baseimage-alpine:3.24\"\n}\n\"sonarr:latest\" <- Base Images\n"
+  },
+  "packages": {
+    "amd64": {
+      "count": 734,
+      "distro": "Alpine Linux v3.24",
+      "hash": "bbe66c99",
+      "by_type": {
+        "dotnet": 669,
+        "apk": 65
+      }
+    },
+    "arm64": {
+      "count": 734,
+      "distro": "Alpine Linux v3.24",
+      "hash": "b707e355",
+      "by_type": {
+        "dotnet": 669,
+        "apk": 65
+      }
+    }
+  },
+  "notes": {
+    "linuxserver": "**Full Changelog**: https://github.com/linuxserver-playground/docker-sonarr/commits/4.0.20.3014-ls1",
+    "upstream": "<!-- Release notes generated using configuration in .github/release.yml at cab419ade8ac7fcab5bf80394ee492abd35d5f5a -->\n\n## What's Changed\n### Changes\n* Fixed: Unexpected languages stored in DB will be treated as Unknown by @mynameisbogdan in https://github.com/Sonarr/Sonarr/pull/8810\n* Jellyfin/Emby Connection Test and New Jellyfin Auth header by @markus101 in https://github.com/Sonarr/Sonarr/pull/8826\n* Fixed: Avoid checking for free space if other specifications fail first by @mynameisbogdan in https://github.com/Sonarr/Sonarr/pull/8867\n\n\n**Full Changelog**: https://github.com/Sonarr/Sonarr/compare/v4.0.19.2979...v4.0.20.3014",
+    "upstream_url": "https://github.com/Sonarr/Sonarr/releases/tag/v4.0.20.3014"
+  }
+}

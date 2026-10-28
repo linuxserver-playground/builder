@@ -1,0 +1,92 @@
+{
+  "schema": 1,
+  "image": "sonarr",
+  "tag": "amd64-4.0.20.3014-ls1",
+  "arch": "amd64",
+  "started": "2026-10-24T20:54:21Z",
+  "finished": "2026-10-24T20:54:41Z",
+  "success": true,
+  "ci_version": "2.0.0",
+  "tests": [
+    {
+      "name": "Container startup",
+      "status": "PASS",
+      "message": "init done after 6.2s",
+      "seconds": 6.171
+    },
+    {
+      "name": "Dotnet check",
+      "status": "PASS",
+      "message": ".NET application detected, no runtime errors in the log"
+    },
+    {
+      "name": "uwsgi check",
+      "status": "PASS",
+      "message": "image does not use uWSGI"
+    },
+    {
+      "name": "Get package info",
+      "status": "PASS",
+      "message": "734 packages"
+    },
+    {
+      "name": "Create SBOM",
+      "status": "PASS",
+      "message": "3342 files with metadata, 334352 bytes gzipped",
+      "seconds": 0.197
+    },
+    {
+      "name": "File tree",
+      "status": "PASS",
+      "message": "3342 entries, 254 hardlinks from the export tar, 204860230 bytes of files",
+      "seconds": 0.986
+    },
+    {
+      "name": "Layers",
+      "status": "PASS",
+      "message": "9 layers, 0 from base, compressed sizes from registry",
+      "seconds": 0.571
+    },
+    {
+      "name": "Init graph",
+      "status": "PASS",
+      "message": "19 units, 2 from this image, base units assumed",
+      "seconds": 0.077
+    },
+    {
+      "name": "Take screenshot",
+      "status": "PASS",
+      "message": "screenshot of http://172.17.0.4:8989/system/status",
+      "seconds": 10.81
+    },
+    {
+      "name": "Runtime probe",
+      "status": "PASS",
+      "message": "13 pids, tcp [8989], rss 173981696 bytes",
+      "seconds": 0.386
+    }
+  ],
+  "engine": "28.0.4",
+  "runner": "47dd436b7238",
+  "startup_seconds": 6.171,
+  "files": {
+    "html": "index.html",
+    "container_log": "container.log",
+    "screenshot": "screenshot.png",
+    "browser_log": "browser.log",
+    "sysinfo": "sysinfo.txt"
+  },
+  "runtime": {
+    "rss_bytes": 173981696,
+    "pids": 13,
+    "listening_tcp": [
+      8989
+    ],
+    "listening_udp": [],
+    "s6_services": [
+      "svc-cron",
+      "svc-sonarr"
+    ],
+    "changed_paths": 217
+  }
+}

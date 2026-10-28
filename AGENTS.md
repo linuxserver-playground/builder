@@ -15,7 +15,7 @@ Treat a schema change as an API change and a template change as a change to ever
 | `schemas/*.json` | JSON Schema 2020-12. `$id` is the canonical URL; cross-references use bare filenames. |
 | `contracts/` | Validator package and `python -m contracts` CLI. |
 | `builder/` | The `builder` CLI: `cli.py` (argparse), `manifest.py` (loading with line numbers, validation, the render context), `render.py`, `check.py`, `snippets.py` (compose/run builders the hub imports), `admonition.py`, `migrate.py` + `legacy_vars.py` (readme-vars/jenkins-vars conversion). |
-| `builder/derive/` | Per-build data, derived in the build: `packages` (syft to the package table), `diff` (against the previous release), `vulns` (grype, the stored form of its report, and `document`, the shape of each build's `vulns.json` on its repository's Pages, which the pages assembler in workflows and the hub's counts share), `registry` (a base image's layer digests), `record` (`builder record`, which writes the release's `record.json`). The hub imports the same modules. |
+| `builder/derive/` | Per-build data, derived in the build: `packages` (syft to the package table), `diff` (against the previous release), `vulns` (grype, the stored form of its report, and `document`, the shape of each build's `vulns.json` on its repository's Pages, which the pages assembler in workflows and the hub's counts share), `registry` (a base image's layer digests), `layers` (which layers came from the base, which Dockerfile lines made the others), `documents` (the per-build documents, `report.json`, `tests.json`, `layers.<arch>.json`, `packages.<arch>.json`: the hub renders its routes with them and the pages assembler in workflows writes copies on each repository's Pages; `parts` gathers their inputs from a release's assets), `record` (`builder record`, which writes the release's `record.json`). The hub imports the same modules. |
 | `builder/templates/` | Jinja templates for `README.md`, the mkdocs page, `README.lite.md`, the build workflow; `parts/` holds the README sections ported from the legacy snippets. `LICENSE` is copied verbatim. |
 | `templates/agents/` | AGENTS.md templates rendered into image repos and mod branches. |
 | `examples/` | Converted manifests; tests keep them valid and rendering. Add one when a schema gains a feature. |
@@ -44,7 +44,7 @@ docker build -t builder:local . && docker run --rm -v "$PWD/examples/sonarr":/re
 
 ## Contracts
 
-Produces all six schemas. Consumers: `workflows` (bundle, control-event, image, record through `builder record`),
+Produces all six schemas. Consumers: `workflows` (bundle, control-event, image, record through `builder record`, the per-build documents through `builder.derive.documents`),
 `ci` (test-report), `hub` (image, mod, bundle, test-report, record, `builder.snippets` and `builder.derive`), `control` (control-event), every `docker-*`
 repo (image, through `builder check` in its build), `docker-mods` (mod).
 

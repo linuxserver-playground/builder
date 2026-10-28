@@ -1,0 +1,83 @@
+[
+  {
+    "index": 0,
+    "diff_id": "sha256:8694d84ab86ae4fb4d424ce63b12f925e8a28b1e247d65969ba11178889c381b",
+    "uncompressed_size": 13707104,
+    "digest": "sha256:c72266279417a5faff6e617848db39c83244c06962365b1b589acaf68eb04b97",
+    "size": 6265184,
+    "created_by": "COPY /root-out/ /",
+    "empty": false
+  },
+  {
+    "index": 1,
+    "diff_id": "sha256:4237b4abe0c583f84633de1da55c1e716dbf60660634932965955c149a90929c",
+    "uncompressed_size": 31193,
+    "digest": "sha256:f6a4c3e338ed76d3e90c1ce7a15013a45c9b55febc952bc905eed245ce0bb8d2",
+    "size": 6239,
+    "created_by": "ADD --chmod=755 https://raw.githubusercontent.com/linuxserver/docker-mods/mod-scripts/docker-mods.v3 /docker-mods",
+    "empty": false
+  },
+  {
+    "index": 2,
+    "diff_id": "sha256:9bbe98c8454e1e7868ec22f386ea55b2bf7b91c60e910340f5f0d52ceb675bf4",
+    "uncompressed_size": 4178,
+    "digest": "sha256:36ae26c163fabdfcee849d115a11fdfd29f9ce0e2ce11591557fdefa3a46d497",
+    "size": 1358,
+    "created_by": "ADD --chmod=755 https://raw.githubusercontent.com/linuxserver/docker-mods/mod-scripts/package-install.v1 /etc/s6-overlay/s6-rc.d/init-mods-package-install/run",
+    "empty": false
+  },
+  {
+    "index": 3,
+    "diff_id": "sha256:c40bda2323ba1685ac2cf801f579580fdefb7c4d088a05076ac05d0a01d9ae12",
+    "uncompressed_size": 945,
+    "digest": "sha256:0fce4af119545ff96a475ca34e1998b05a6679afcb19aacd17e1592bf52330b2",
+    "size": 701,
+    "created_by": "ADD --chmod=755 https://raw.githubusercontent.com/linuxserver/docker-mods/mod-scripts/lsiown.v1 /usr/bin/lsiown",
+    "empty": false
+  },
+  {
+    "index": 4,
+    "diff_id": "sha256:e61d54197f8e67a701341e0d896bd4e7321842be1d602c5850f886a3e753eba6",
+    "uncompressed_size": 478,
+    "digest": "sha256:0f1ebc65af7490d12f97ddd6ab1df01275098e83d10a3eed69fe55e1dbdbc68c",
+    "size": 427,
+    "created_by": "ADD --chmod=755 https://raw.githubusercontent.com/linuxserver/docker-mods/mod-scripts/with-contenv.v1 /usr/bin/with-contenv",
+    "empty": false
+  },
+  {
+    "index": 5,
+    "diff_id": "sha256:5cff24aaa8d5993662766cc4ab1ee7e5f16d7a781904d4967244f998440ca9aa",
+    "uncompressed_size": 14398967,
+    "digest": "sha256:9ba80e72bcf91d6818c07b928e768c51752674f9eb7dc01f98dfe10ca6302379",
+    "size": 6086095,
+    "created_by": "RUN |6 BUILD_DATE=2026-10-24T16:39:06+00:00 VERSION=bc9f8d41-ls16 MODS_VERSION=v3 PKG_INST_VERSION=v1 LSIOWN_VERSION=v1 WITHCONTENV_VERSION=v1 /bin/sh -c echo \"**** install runtime packages ****\" &&   apk add --no-cache     alpine-release     bash     ca-certificates     catatonit     coreutils     curl     findutils     jq     netcat-openbsd     procps-ng     shadow     tzdata &&   echo \"**** create abc user and make our folders ****\" &&   groupmod -g 1000 users &&   useradd -u 911 -U -d /config -s /bin/false abc &&   usermod -G users abc &&   mkdir -p     /app     /config     /defaults     /lsiopy &&   echo \"**** cleanup ****\" &&   rm -rf     /tmp/*",
+    "empty": false
+  },
+  {
+    "index": 6,
+    "diff_id": "sha256:6c308902ce4df6793665e8af207e75d7ed3590fe7570ed9472d6a099d5ca8ceb",
+    "uncompressed_size": 9422,
+    "digest": "sha256:6518ec658ff1145a6b3af6b0a1817dec74d6c1b84b05cb05c9ebdb3e5a9205e6",
+    "size": 4630,
+    "created_by": "COPY root/ /",
+    "empty": false
+  },
+  {
+    "index": 7,
+    "diff_id": "sha256:25a502513505e39cb41a8dfa816ad8f249fd0b241fd708d426ebe01969ccb906",
+    "uncompressed_size": 176998615,
+    "digest": "sha256:59e155f019d0efde7e083852b66d37d7fb624d96dcb9d1a2714f22230d4056c7",
+    "size": 75533101,
+    "created_by": "RUN |3 BUILD_DATE=2026-10-24T20:50:40Z VERSION=4.0.20.3014-ls1 SONARR_VERSION=4.0.20.3014 /bin/sh -c echo \"**** install packages ****\" &&   apk add --no-cache     icu-libs     krb5-libs     sqlite-libs     xmlstarlet &&   echo \"**** install sonarr ****\" &&   mkdir -p /app/sonarr/bin &&   if [ -z ${SONARR_VERSION+x} ]; then     SONARR_VERSION=$(curl -sX GET http://services.sonarr.tv/v1/releases     | jq -r \"first(.[] | select(.releaseChannel==\\\"${SONARR_CHANNEL}\\\") | .version)\");   fi &&   curl -o     /tmp/sonarr.tar.gz -L     \"https://services.sonarr.tv/v1/update/${SONARR_BRANCH}/download?version=${SONARR_VERSION}&os=linuxmusl&runtime=netcore&arch=x64\" &&   tar xzf     /tmp/sonarr.tar.gz -C     /app/sonarr/bin --strip-components=1 &&   echo -e \"UpdateMethod=docker\\nBranch=${SONARR_BRANCH}\\nPackageVersion=${VERSION:-LocalBuild}\\nPackageAuthor=[linuxserver.io](https://linuxserver.io)\" > /app/sonarr/package_info &&   printf \"Linuxserver.io version: ${VERSION}\\nBuild-date: ${BUILD_DATE}\" > /build_version &&   echo \"**** cleanup ****\" &&   rm -rf     /app/sonarr/bin/Sonarr.Update     /tmp/*",
+    "empty": false
+  },
+  {
+    "index": 8,
+    "diff_id": "sha256:7ea34e6bdbe89df2552f5e3eef2221f6b6c3725c1cdfb48ac147bf78b8d77b13",
+    "uncompressed_size": 978,
+    "digest": "sha256:505689a7a548a37ba5f34041ab148ad1b4ab69d071ba21eeb4afa59aca203d2a",
+    "size": 1042,
+    "created_by": "COPY root/ /",
+    "empty": false
+  }
+]
