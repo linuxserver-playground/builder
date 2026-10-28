@@ -31,7 +31,11 @@
             "oneOf": [{ "type": "null" }, { "$ref": "bundle.schema.json" }]
           },
           "release_url": { "type": "string", "format": "uri" },
-          "artifact_url": { "type": "string", "format": "uri", "description": "Workflow artifact holding the bundle for dev/pr builds." }
+          "artifact_url": { "type": "string", "format": "uri", "description": "Workflow artifact holding the bundle for dev/pr builds." },
+          "pages": {
+            "enum": ["deployed", "failed", "skipped"],
+            "description": "The repository's Pages deploy in this run (CONVENTIONS §6, \"Repo Pages\"), made before this event is sent: `deployed` when a live release's site went out with this release in it; `failed` when it was attempted and every deploy failed, so the site still serves the previous deploy without this release (repaired by the next release or a `reason: pages` run); `skipped` when the run made no release and attempted none. Absent from events of workflows older than contracts 1.10."
+          }
         }
       }
     }

@@ -173,6 +173,32 @@ def test_bundle_rejects_bad_digest() -> None:
     assert errors("bundle", data)
 
 
+def test_bundle_published_tags_are_optional_and_closed() -> None:
+    data = _bundle()
+    data["published"] = {"image": "ghcr.io/linuxserver-playground/sonarr", "tags": ["latest", "amd64-latest"]}
+    validate("bundle", data)
+    data["published"]["tags"] = []
+    assert errors("bundle", data)
+    data["published"] = {"image": "ghcr.io/linuxserver-playground/sonarr", "tags": ["latest"], "extra": 1}
+    assert errors("bundle", data)
+
+
+def test_control_event_summary_says_how_pages_went() -> None:
+    event = {
+        "schema": 1,
+        "type": "build.summary",
+        "sent": "2026-10-24T12:00:00Z",
+        "repository": "linuxserver-playground/docker-sonarr",
+        "run_id": 1,
+        "result": "success",
+        "bundle": None,
+    }
+    validate("control-event", event)  # older workflows send none
+    for outcome in ("deployed", "failed", "skipped"):
+        validate("control-event", {**event, "pages": outcome})
+    assert errors("control-event", {**event, "pages": "success"})
+
+
 def test_control_event_summary_embeds_bundle_or_null() -> None:
     base = {
         "schema": 1,

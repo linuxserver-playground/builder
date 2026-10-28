@@ -204,6 +204,12 @@ attached by the publish job in BuildKit's attestation layout next to the provena
 `docker buildx imagetools inspect --format '{{json .SBOM}}'` and Docker tooling read it. BuildKit's own
 `--sbom` scan is off: it records every file and outgrew the 80 MiB attestation limit on desktop images.
 
+`build.json` `published` is what the publish job pushed, as publish-manifest reports it: the image (`image`)
+and every tag it created (`tags`), the unprefixed ones then their arch-prefixed twins. Readers of a build's tags
+take them from there (and, for a release from before contracts 1.10, from `version.tags`, which its publish pushed
+in full), never from a registry listing: a build's tags are fixed when it publishes, and only the floating ones
+move on to the branch's next build.
+
 Data about one build is made by the build: the publish job has the image's SBOMs, test results and the
 previous release in hand, so it computes what the hub and the website show for the build, and the hub only
 indexes it. The derivation code (`builder.derive`) is the one the hub uses for releases made before
@@ -212,7 +218,8 @@ scanned with that day's database. Nothing rescans it: it is informal, best-effor
 not a security feed.
 
 `build.json` is also written to the workflow job summary and sent to the control plane as a
-`build.summary` event (`schemas/control-event.schema.json`). PR and dev builds produce the same bundle
+`build.summary` event (`schemas/control-event.schema.json`), after the live release's Pages deploy (below), whose
+outcome the event's `pages` carries. PR and dev builds produce the same bundle
 as workflow artifacts (not Release assets) so reviewers get the same data. A PR build's report (tests per
 arch, screenshots, runtime, package changes, log tails) is its pull request comment; a dev or live build's job
 summary opens with the same report, and that run page is where notifications link a build without a page on
@@ -227,8 +234,9 @@ can fetch them. `PAGES` is `https://<owner>.github.io/<repo>`, derived from the 
 down.
 
 Nothing is committed for it. The shared workflow assembles the site from the repository's GitHub Releases
-into an empty directory and deploys it as a workflow artifact: at the end of the publish job of every live
-release, and on its own when the build runs with `reason: pages` (filling or repairing a site). Each deploy
+into an empty directory and deploys it as a workflow artifact: in the publish job of every live release, right
+after the Release and before the `build.summary` event (§10), and on its own when the build runs with
+`reason: pages` (filling or repairing a site). Each deploy
 is complete by itself, so a lost one is repaired by the next. The Releases stay the archive of everything.
 
 | Path | What |
@@ -285,6 +293,14 @@ The control plane learns most things from GitHub webhooks (`workflow_run`, `work
 at the end of every run, authenticated with an HMAC over the body using a per-org secret
 (`CONTROL_EVENTS_SECRET`), because GitHub's events do not carry the image, tag and test results.
 Shape: `schemas/control-event.schema.json`.
+
+A live release sends it after its Pages deploy, so that when the control plane hears of a release the build's
+files are on its repository's Pages (the screenshot, report files, file trees and `vulns.json` its page on the
+website reads), or the event says they are not: `pages` is `deployed` (the site went out with this release),
+`failed` (every deploy attempt failed; the site serves its previous deploy, without this release, until the next
+release or a `reason: pages` run repairs it) or `skipped` (no release, no deploy attempted). The Pages step never
+fails the run, so this field is the only place its failure shows. A `reason: pages` run sends no event; its one job
+fails when no deploy succeeded.
 
 ### Who renders what
 

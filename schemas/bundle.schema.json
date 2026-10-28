@@ -68,6 +68,16 @@
         }
       }
     },
+    "published": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["image", "tags"],
+      "description": "What the publish job pushed to the registry, from publish-manifest itself: the image repository and every tag it created, the unprefixed ones (one multi-platform index) then their arch-prefixed twins. Absent when the run pushed no tags (a package check, a fork's pull request, a failed build) and in bundles from before contracts 1.10, whose live releases had published `version.tags` in full.",
+      "properties": {
+        "image": { "type": "string", "description": "The image the tags were pushed to, without a tag: `ghcr.io/<owner>/<name>` for a live build, under `dev/` or `untrusted-pr/` otherwise (CONVENTIONS §4)." },
+        "tags": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+      }
+    },
     "index_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$", "description": "Multi-platform index digest after publish." },
     "labels": { "type": "object", "additionalProperties": { "type": "string" } },
     "config": {
