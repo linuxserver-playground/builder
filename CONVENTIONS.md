@@ -207,8 +207,9 @@ attached by the publish job in BuildKit's attestation layout next to the provena
 Data about one build is made by the build: the publish job has the image's SBOMs, test results and the
 previous release in hand, so it computes what the hub and the website show for the build, and the hub only
 indexes it. The derivation code (`builder.derive`) is the one the hub uses for releases made before
-`record.json` existed. The vulnerability scan is also repeated by the hub on the database's clock, so the
-newest build of every branch keeps current findings.
+`record.json` existed. The vulnerability scan in `record.json` is the state of the image as it was released,
+scanned with that day's database. Nothing rescans it: it is informal, best-effort data shown on the build's page,
+not a security feed.
 
 `build.json` is also written to the workflow job summary and sent to the control plane as a
 `build.summary` event (`schemas/control-event.schema.json`). PR and dev builds produce the same bundle
@@ -235,6 +236,7 @@ is complete by itself, so a lost one is repaired by the next. The Releases stay 
 | `PAGES/index.json` | `{"schema": "lsio-pages/1", "repo": "<owner>/<repo>", "generated_at": "<ISO 8601>", "keep": 5, "builds": [...]}`, each build `{"tag", "branch", "published_at", "arches": [...]}`, newest first |
 | `PAGES/builds/<tag>/files.<arch>.json.gz` | The Release asset as it is. Pages serves it as `application/gzip` without `Content-Encoding`: readers gunzip it themselves |
 | `PAGES/builds/<tag>/packages.<arch>.json.gz` | The Release asset as it is |
+| `PAGES/builds/<tag>/vulns.json` | The build's own scan from `record.json` `vulns`, shaped by `builder.derive.vulns.document`: `{"image", "tag", "summary", "by_arch", "matches", "db_date", "grype_version", "scanned_at", "caveats"}`. `summary` and each `by_arch` entry count `critical`, `high`, `medium`, `low`, `negligible`, `unknown`, `fixed`, `unfixed` and `wont_fix` over the merged rows; `matches` holds one row per vulnerability id and package across the architectures, worst first, each record.json's row plus the `arches` it was found on; `scanned_at` is the earliest scan (absent when the record has no time). Absent when the record has no scan. It is never rescanned |
 | `PAGES/builds/<tag>/<arch>/…` | `test.<arch>.tar.gz` unpacked as the hub's build reports unpack it: the files `test.<arch>.json` names under fixed names (`screenshot.png`, `container.log`, `browser.log`, `sysinfo.txt`, `shellcheck.xml`), `package_diff.txt`, everything else under its path in the archive with one leading directory stripped. Never the harness's retired `index.html`; at most 64 MiB per tarball |
 
 The site keeps the newest 5 releases (by `published_at`) of each live branch, and only live releases. A
@@ -288,18 +290,19 @@ Shape: `schemas/control-event.schema.json`.
 
 The control plane runs on modest hardware and is public. It shows live build status, the fleet board,
 queue, scheduler decisions and maintainer actions, and nothing else. Everything derived from a release
-(test reports, screenshots, logs, package and file data, diffs, store templates, docs) is rendered by the
-hub into static files on GitHub Pages, from the Release assets. Links in release notes, Discord messages
+(test reports, screenshots, logs, package and file data, diffs, store templates, docs) is static: the hub
+renders its data and generated artefacts on GitHub Pages from the Release assets, each image repository's Pages
+holds the heavy files of its builds, and the website renders the pages people read from both. Links in release notes, Discord messages
 and READMEs point at the website for results and at the control plane only for live run status; the website
 renders the fleet dashboard from the control plane's API.
 
 | Route | Owner | Purpose |
 | --- | --- | --- |
 | `{SITE_URL}/images/{image}/builds/{tag}/` | site | The CI results page of one live build, rendered from the hub's data: per-arch test table, screenshot, logs, diff, explorer. It exists as soon as the hub serves the build: until the site's next build makes it a static page, the site's 404 page renders it in the browser from the hub's API. `test.report_url` in the bundle, the CI section of release notes and Discord embeds point here. Section anchors are stable (`#quick-start`, `#setup`, `#parameters`, `#proxy`, `#mods`, `#builds`, `#fleet`). |
-| `{HUB_URL}/builds/{image}/{tag}/` | hub | The same results as plain static pages and the unpacked report files the site reads. |
-| `{PAGES}/index.json`, `{PAGES}/builds/{tag}/...` | image repo (shared workflow) | The heavy files of the newest 5 live builds of each branch, readable cross-origin (§6, "Repo Pages"). |
+| `{HUB_URL}/builds/{image}/{tag}/` | hub | A redirect to `{SITE_URL}/images/{image}/builds/{tag}/`, for every build the hub knows, retained or in its history: older release notes and bundles linked the hub's retired report pages. |
+| `{PAGES}/index.json`, `{PAGES}/builds/{tag}/...` | image repo (shared workflow) | The heavy files of the newest 5 live builds of each branch, readable cross-origin, the build's as-released vulnerability scan (`vulns.json`) among them (§6, "Repo Pages"). |
 | `{SITE_URL}/fleet/...` | site | The fleet dashboard, rendered from the control plane's JSON API with cookie sign-in. |
-| `{HUB_URL}/builds/{image}/` | hub | Build history of one image. |
+| `{HUB_URL}/builds/{image}/` | hub | A redirect to the image page's build list, `{SITE_URL}/images/{image}/#builds`. |
 | `{HUB_URL}/stores/...`, `{HUB_URL}/api/v1/...` | hub | Store templates and the static API. |
 | `{CONTROL_URL}/builds/{owner}/{repo}/{run_id}` | control | Live status of one run: jobs, timings, result, links to the hub page once published. |
 | `{CONTROL_URL}/images/{name}` and `/images/{name}/{tag}` | control | Fleet-board drill-down; README badges link here. |

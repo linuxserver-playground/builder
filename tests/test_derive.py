@@ -16,7 +16,7 @@ from builder.derive import record as record_module
 from builder.derive.diff import diff_builds
 from builder.derive.packages import normalise
 from builder.derive.registry import base_layers, parse_reference
-from builder.derive.vulns import ScanError, compact
+from builder.derive.vulns import CAVEATS, ScanError, compact, document, merge, summarise, summary_of
 from contracts import validate
 
 from .test_contracts import _bundle
@@ -185,6 +185,98 @@ def test_compact_merges_locations_and_keeps_the_scan_time() -> None:
             "cvss": 7.5,
         }
     ]
+
+
+def _row(package: str, vuln: str, severity: str, fix_state: str, version: str = "1.0") -> Json:
+    return {
+        "package": package,
+        "version": version,
+        "type": "apk",
+        "id": vuln,
+        "severity": severity,
+        "fix_state": fix_state,
+        "fixed_in": [],
+        "urls": [],
+        "cvss": None,
+    }
+
+
+SCANS: dict[str, Json] = {
+    "amd64": {
+        "db_date": "2026-10-26T05:00:00Z",
+        "grype_version": "0.121.0",
+        "scanned_at": "2026-10-26T12:00:05Z",
+        "matches": [
+            _row("zlib1g", "CVE-2023-45853", "critical", "wont-fix"),
+            _row("curl", "CVE-2026-2", "high", "fixed"),
+            _row("coreutils", "CVE-2016-2781", "medium", "unknown"),
+        ],
+    },
+    "arm64": {
+        "db_date": "2026-10-26T05:00:00Z",
+        "grype_version": "0.121.0",
+        "scanned_at": "2026-10-26T12:00:00Z",
+        "matches": [
+            _row("curl", "CVE-2026-2", "high", "fixed", version="1.1"),
+            _row("coreutils", "CVE-2016-2781", "medium", "not-fixed"),
+        ],
+    },
+}
+
+
+def test_merge_keeps_one_row_per_vulnerability_and_package_with_its_arches() -> None:
+    merged = merge(SCANS)
+    assert [(m["package"], m["arches"]) for m in merged] == [
+        ("zlib1g", ["amd64"]),
+        ("curl", ["amd64", "arm64"]),
+        ("coreutils", ["amd64", "arm64"]),
+    ]
+    assert merged[1]["version"] == "1.0"  # the first architecture's version stands
+    assert summarise(merged) == {
+        "critical": 1,
+        "high": 1,
+        "medium": 1,
+        "low": 0,
+        "negligible": 0,
+        "unknown": 0,
+        "fixed": 1,
+        "unfixed": 1,
+        "wont_fix": 1,
+    }
+    assert "arches" not in SCANS["amd64"]["matches"][0]  # the input is left alone
+
+
+def test_document_is_the_served_shape_and_the_summary_its_head() -> None:
+    doc = document("sonarr", "4.0.20.3014-ls4", SCANS)
+    assert list(doc) == [
+        "image",
+        "tag",
+        "summary",
+        "by_arch",
+        "matches",
+        "db_date",
+        "grype_version",
+        "scanned_at",
+        "caveats",
+    ]
+    assert doc["image"] == "sonarr" and doc["tag"] == "4.0.20.3014-ls4"
+    assert doc["by_arch"]["arm64"]["critical"] == 0 and doc["by_arch"]["amd64"] == doc["summary"]
+    assert doc["scanned_at"] == "2026-10-26T12:00:00Z" and doc["db_date"] == "2026-10-26T05:00:00Z"
+    assert doc["caveats"] == CAVEATS and all(c.endswith(".") for c in CAVEATS)
+    assert not any("rescan" in c for c in CAVEATS)
+    head = summary_of(SCANS)
+    assert head == {k: doc[k] for k in ("summary", "by_arch", "db_date", "grype_version", "scanned_at")}
+    # A scan without its time (an older record) still shapes; the time is left out.
+    bare = {"amd64": {k: v for k, v in SCANS["amd64"].items() if k != "scanned_at"}}
+    assert "scanned_at" not in document("sonarr", "x", bare)
+
+
+def test_document_from_a_real_record_scan(build: tuple[Path, Path]) -> None:
+    out, prev = build
+    rec = record_module.build_record(out, previous=prev, scanner=FakeGrype(), fetch_base=None, now=lambda: NOW)
+    doc = document(rec["image"], rec["tag"], rec["vulns"])
+    assert doc["summary"]["high"] == 1 and doc["matches"][0]["arches"] == sorted(rec["vulns"])
+    assert json.loads(json.dumps(doc)) == doc
 
 
 def test_parse_reference() -> None:

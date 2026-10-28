@@ -1,7 +1,9 @@
 """
-The vulnerability scan: grype against a build's syft document, reduced to the form the hub stores and serves (one
-row per vulnerability, package and version, the database date and grype's version). Runs in the publish job of
-every build and in the hub's hourly rescans, which follow the database rather than the build.
+The vulnerability scan: grype against a build's syft document in the publish job of every build, reduced to the
+form record.json stores (one row per vulnerability, package and version, the database date and grype's version),
+and the one shaping of those scans for readers: `document`, a build's `vulns.json` on its repository's Pages
+(CONVENTIONS §6, "Repo Pages"), and `summary_of`, the counts the hub keeps for its builds list. The scan is the
+state of the image as it was released: nothing rescans it later.
 """
 
 from __future__ import annotations
@@ -153,3 +155,85 @@ def compact(report: Json, db_date: str | None = None, scanned_at: str | None = N
 
 def sort_matches(matches: list[Json]) -> list[Json]:
     return sorted(matches, key=lambda m: (SEVERITIES.index(m["severity"]), m["package"].casefold(), m["id"]))
+
+
+CAVEATS = [
+    "This is the scan made when the image was built (grype against the build's syft SBOM, with the vulnerability "
+    "database of that day), not an assessment, and it is not updated: the same image scanned today may show "
+    "findings learned about since.",
+    "Distribution packages (apk, deb) are matched against the distribution's own security feed, which knows about "
+    'backported fixes: a fix state of "fixed" means the distribution ships a fixed package version, "not-fixed" '
+    "means no fix exists upstream for that distribution release.",
+    "Images are rebuilt weekly, so a distribution fix reaches a later build within a week of the distribution "
+    'shipping it; a "fixed" finding means the fix was not in the image yet when it was built.',
+    "Unfixable findings are not a reason to avoid an image: every image on the same base shares them, and only the "
+    "distribution can resolve them.",
+    "A finding against a package does not mean the vulnerable code path is reachable in this image.",
+]
+"""How to read a scan; every vulns.json carries them, and readers show them."""
+
+
+def summarise(matches: list[Json]) -> Json:
+    """Counts per severity and fix state. `unfixed` is everything that is neither fixed nor won't-fix."""
+    summary = dict.fromkeys(SEVERITIES, 0) | {"fixed": 0, "unfixed": 0, "wont_fix": 0}
+    for m in matches:
+        summary[_severity(m.get("severity"))] += 1
+        state = m.get("fix_state")
+        summary["fixed" if state == "fixed" else "wont_fix" if state == "wont-fix" else "unfixed"] += 1
+    return summary
+
+
+def merge(scans: dict[str, Json]) -> list[Json]:
+    """
+    One row per vulnerability and package across architectures (the first version seen stands), each carrying the
+    `arches` it was found on. Summaries count these rows, per architecture too, so the numbers add up.
+    """
+    merged: dict[tuple[str, str], Json] = {}
+    for arch in sorted(scans):
+        for m in scans[arch].get("matches", []):
+            key = (m["id"], m["package"])
+            if key in merged:
+                if arch not in merged[key]["arches"]:
+                    merged[key]["arches"].append(arch)
+            else:
+                merged[key] = {**m, "arches": [arch]}
+    return sort_matches(list(merged.values()))
+
+
+def summary_of(scans: dict[str, Json]) -> Json:
+    """
+    The counts of a build's scans (record.json `vulns`, per architecture) and when they were made: `summary` over the
+    merged rows, `by_arch`, `db_date` and `grype_version` (of the newest database among the arches) and `scanned_at`
+    (the earliest scan, when the scans say).
+    """
+    newest = max(scans.values(), key=lambda s: str(s.get("db_date", "")))
+    scanned = sorted(str(s["scanned_at"]) for s in scans.values() if s.get("scanned_at"))
+    out: Json = {
+        "summary": summarise(merge(scans)),
+        "by_arch": {arch: summarise(merge({arch: scans[arch]})) for arch in sorted(scans)},
+        "db_date": str(newest.get("db_date", "")),
+        "grype_version": str(newest.get("grype_version", "")),
+    }
+    if scanned:
+        out["scanned_at"] = scanned[0]
+    return out
+
+
+def document(image: str, tag: str, scans: dict[str, Json]) -> Json:
+    """
+    A build's `vulns.json`: its scans of every architecture merged into one list, worst first, with the summaries,
+    the database date, grype's version, when it was scanned and the caveats. Each match is the stored row plus the
+    `arches` it was found on.
+    """
+    head = summary_of(scans)
+    return {
+        "image": image,
+        "tag": tag,
+        "summary": head["summary"],
+        "by_arch": head["by_arch"],
+        "matches": merge(scans),
+        "db_date": head["db_date"],
+        "grype_version": head["grype_version"],
+        **({"scanned_at": head["scanned_at"]} if "scanned_at" in head else {}),
+        "caveats": list(CAVEATS),
+    }
