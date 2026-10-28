@@ -71,8 +71,10 @@ Pull requests build and test fully and publish to the untrusted namespace (§4).
 ### Kinds
 
 `image.yml` `kind` says what an image is for. Leave it out for an application, the default (`app`). The
-`baseimage-*` repos set `kind: base`: images other images build `FROM`. Internal tools that the project's own
-tooling runs (xvfb, yq, build-agent) set `kind: tool`. Base images and tools build, test and release like
+`baseimage-*` repos set `kind: base`: images other images build `FROM`. Tools set `kind: tool`: images that are
+not a long-running application, run once as a command (ffmpeg, qemu-static) or by the project's own tooling
+(build-agent, xvfb), or copied into other images (yq, unrar). An app is what users deploy and leave running,
+which is what the stores and install artefacts are for. Base images and tools build, test and release like
 any image, but the site lists them on their own tabs, and the hub leaves them out of every store, the
 upstream-compatible image list and the install artefacts (Kubernetes, quadlets, SWAG confs). `builder check`
 requires `kind: base` exactly on the `baseimage-*` names; `builder migrate` derives both kinds from the name and

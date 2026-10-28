@@ -26,7 +26,7 @@
     "kind": {
       "enum": ["app", "base", "tool"],
       "default": "app",
-      "description": "What the image is for. 'app' (the default, leave it out) is an application users run. 'base' is a base image other images build FROM (the baseimage-* repos). 'tool' is an internal tool the project's own tooling runs. Base images and tools are listed apart on the site and left out of every store and install artefact."
+      "description": "What the image is for. 'app' (the default, leave it out) is a long-running application users deploy. 'base' is a base image other images build FROM (the baseimage-* repos). 'tool' is anything else: an image run once as a command (ffmpeg, qemu-static), run by the project's own tooling, or copied into other images. Base images and tools are listed apart on the site and left out of every store and install artefact."
     },
     "extras": {
       "type": "array",
