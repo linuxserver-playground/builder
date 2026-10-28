@@ -191,6 +191,14 @@ A live release attaches these assets to its GitHub Release. Names are fixed; `<a
 | `package_versions.<arch>.txt` | text | syft table, the human-readable list |
 | `record.json` | `schemas/record.schema.json` | Everything the hub stores about the build, derived in the publish job by `builder record`: the normalised package tables, the diff against the previous release of the branch, the grype scan of both architectures, the layers, the test reports and the base image's layer digests. The hub ingests a release from `build.json` and this file alone; a part the build could not derive is listed in `errors` and the hub derives it instead. |
 
+After a live release's run has completed successfully, the control plane attaches two more assets (the
+run's own last steps are in them, so the workflow cannot). They appear a minute or more after the Release.
+
+| Asset | Notes |
+| --- | --- |
+| `run.json` | The run's record, `schema` 1, in GitHub's field names: `archived_at`, `repository`, `release` {`tag`, `url`}, `build` {`image`, `branch`, `mode`, `version_tag`, `release_tag`}, `run` {`id`, `name`, `path`, `run_number`, `run_attempt`, `html_url`, `display_title`, `event`, `status`, `conclusion`, `created_at`, `run_started_at`, `updated_at`}, `trigger` {`event`, `reason`, `actor`, `triggering_actor`}, `head` {`branch`, `sha`, `message`, `timestamp`, author `name`}, `jobs[]` {`id`, `name`, `html_url`, `run_attempt`, `status`, `conclusion`, `created_at`, `started_at`, `completed_at`, `runner_name`, `runner_group_name`, `labels`, `steps[]` {`number`, `name`, `status`, `conclusion`, `started_at`, `completed_at`}}. `trigger.reason` is the build's own `reason`: the REST API exposes no dispatch inputs |
+| `logs.zip` | The run's log archive as GitHub serves it, secrets masked. Uploaded only when a check for credential-shaped strings finds none, so a Release may have `run.json` without it; GitHub keeps logs 90 days, so an older run gets `run.json` only |
+
 The image itself carries the same packages-only SBOM as SPDX 2.3 (`sbom.<arch>.spdx.json` from the ci run),
 attached by the publish job in BuildKit's attestation layout next to the provenance, so
 `docker buildx imagetools inspect --format '{{json .SBOM}}'` and Docker tooling read it. BuildKit's own
@@ -208,6 +216,34 @@ as workflow artifacts (not Release assets) so reviewers get the same data. A PR 
 arch, screenshots, runtime, package changes, log tails) is its pull request comment; a dev or live build's job
 summary opens with the same report, and that run page is where notifications link a build without a page on
 the website.
+
+### Repo Pages
+
+Every image repository has GitHub Pages, deployed from GitHub Actions (the `github-pages` environment allows
+every branch). Its site is the browser-readable home of the heavy files of the repository's newest live
+builds, so the hub does not copy them. Pages answers with `access-control-allow-origin: *`: any website
+can fetch them. `PAGES` is `https://<owner>.github.io/<repo>`, derived from the repository, never written
+down.
+
+Nothing is committed for it. The shared workflow assembles the site from the repository's GitHub Releases
+into an empty directory and deploys it as a workflow artifact: at the end of the publish job of every live
+release, and on its own when the build runs with `reason: pages` (filling or repairing a site). Each deploy
+is complete by itself, so a lost one is repaired by the next. The Releases stay the archive of everything.
+
+| Path | What |
+| --- | --- |
+| `PAGES/index.json` | `{"schema": "lsio-pages/1", "repo": "<owner>/<repo>", "generated_at": "<ISO 8601>", "keep": 5, "builds": [...]}`, each build `{"tag", "branch", "published_at", "arches": [...]}`, newest first |
+| `PAGES/builds/<tag>/files.<arch>.json.gz` | The Release asset as it is. Pages serves it as `application/gzip` without `Content-Encoding`: readers gunzip it themselves |
+| `PAGES/builds/<tag>/packages.<arch>.json.gz` | The Release asset as it is |
+| `PAGES/builds/<tag>/<arch>/…` | `test.<arch>.tar.gz` unpacked as the hub's build reports unpack it: the files `test.<arch>.json` names under fixed names (`screenshot.png`, `container.log`, `browser.log`, `sysinfo.txt`, `shellcheck.xml`), `package_diff.txt`, everything else under its path in the archive with one leading directory stripped. Never the harness's retired `index.html`; at most 64 MiB per tarball |
+
+The site keeps the newest 5 releases (by `published_at`) of each live branch, and only live releases. A
+branch is live when its own `image.yml` names it in `release.branch`. A release belongs to the branch its
+`target_commitish` names (§3); one whose `target_commitish` is a commit sha belongs to the live branch whose
+release tag prefixes its tag (the longest such tag), else to the default branch; one made from a branch that
+is no longer live is left out. Should a site outgrow 900 MiB (Pages refuses 1 GB), the oldest builds that
+are not their branch's newest are left out, with a warning. A build that is not in `index.json` links to its
+Release.
 
 ## 7. Release notes
 
@@ -233,7 +269,8 @@ hub stores all three.
 ## 9. Secrets and tokens
 
 - The shared workflow needs no long-lived secrets for live builds: `GITHUB_TOKEN` with
-  `packages: write`, `contents: write` is enough to push to GHCR and create Releases in the same org.
+  `packages: write`, `contents: write` is enough to push to GHCR and create Releases in the same org, and
+  `pages: write` with `id-token: write` to deploy the repository's Pages site (§6).
 - The hub ingests through `repository_dispatch`, sent with the GitHub App installation token held by the
   control plane, or on its own hourly reconciliation. Image repos never hold a hub token.
 - Discord and any other notification sinks are configured only in the control plane.
@@ -260,6 +297,7 @@ renders the fleet dashboard from the control plane's API.
 | --- | --- | --- |
 | `{SITE_URL}/images/{image}/builds/{tag}/` | site | The CI results page of one live build, rendered from the hub's data: per-arch test table, screenshot, logs, diff, explorer. It exists as soon as the hub serves the build: until the site's next build makes it a static page, the site's 404 page renders it in the browser from the hub's API. `test.report_url` in the bundle, the CI section of release notes and Discord embeds point here. Section anchors are stable (`#quick-start`, `#setup`, `#parameters`, `#proxy`, `#mods`, `#builds`, `#fleet`). |
 | `{HUB_URL}/builds/{image}/{tag}/` | hub | The same results as plain static pages and the unpacked report files the site reads. |
+| `{PAGES}/index.json`, `{PAGES}/builds/{tag}/...` | image repo (shared workflow) | The heavy files of the newest 5 live builds of each branch, readable cross-origin (§6, "Repo Pages"). |
 | `{SITE_URL}/fleet/...` | site | The fleet dashboard, rendered from the control plane's JSON API with cookie sign-in. |
 | `{HUB_URL}/builds/{image}/` | hub | Build history of one image. |
 | `{HUB_URL}/stores/...`, `{HUB_URL}/api/v1/...` | hub | Store templates and the static API. |

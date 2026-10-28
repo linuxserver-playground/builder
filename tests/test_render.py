@@ -108,6 +108,11 @@ def test_workflow_is_the_fixed_text() -> None:
     assert "group: build-${{ github.ref }}" in workflow
     # The shared workflow asks for write tokens; the caller must grant them or GitHub refuses to start.
     assert "      packages: write\n" in workflow
+    # The Publish job deploys the repository's Pages site (CONVENTIONS §6, "Repo Pages").
+    assert "      id-token: write\n" in workflow and "      pages: write\n" in workflow
+    # reason=pages only deploys Pages, in its own concurrency group so it never displaces a pending build.
+    assert "options: [manual, upstream, packages, rebuild, pages]" in workflow
+    assert "== 'pages' && '-pages' || '' }}" in workflow
     assert "repository_dispatch:" in workflow
     # Closed pull requests are the PR report's business (it deletes the untrusted-pr images), not a build.
     assert "  pull_request:\n    types: [opened, synchronize, reopened]\n" in workflow

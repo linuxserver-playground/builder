@@ -26,7 +26,7 @@ dev = [
 builder = "builder.cli:main"
 
 [tool.lsio]
-contracts_version = "1.7"
+contracts_version = "1.8"
 
 [build-system]
 requires = ["setuptools>=75"]
