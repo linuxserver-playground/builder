@@ -78,6 +78,10 @@ _SED = re.compile(r"""^sed\s+(?:-e\s+)?'s(.)(.*?)\1(.*?)\1g?'$""")
 _AWK = re.compile(r"""^awk\s+-F\s*'([^']+)'\s+'\{print \$(\d+)\}'$""")
 _CUT = re.compile(r"^cut\s+-c\s*1-(\d+)$")
 _GREP_PACKAGE = re.compile(r"""grep\b.*'Package:\s*([^']+)'""")
+_ECHO_LITERAL = re.compile(r"""^echo\s+([\w.+~-]+)$""")
+_ARCH_PAGE = re.compile(r"archlinux\.org/packages/([a-z-]+)/([\w]+)/([^/\s]+)/?$")
+_ARCH_DB = re.compile(r"/archlinux/([a-z-]+)/os/x86_64/\1\.db$")
+_ARCH_DB_AWK = re.compile(r"""^awk\s+-F\s*'\(-\|/\)'\s+'/([^/]+)/""")
 _REPO_VAR = re.compile(r"""^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?:'([^']*)'|"([^"]*)"|(\S*))\s*$""")
 _LEGACY_DATE = re.compile(r"^(\d{2})\.(\d{2})\.(\d{2}):?$")
 _SHELL_EXPANSION = re.compile(r"\$\{[A-Z_]+[^}]*[%#/:^,][^}]*\}")
@@ -192,12 +196,20 @@ def parse_version_command(command: str) -> tuple[Json, str | None]:
     """Recognise the common custom_version_command shapes; otherwise keep the command verbatim with a TODO."""
     fallback = ({"type": "command", "run": command.strip()}, "version command not recognised; prefer a typed source")
     stages = split_pipeline(command.strip())
+    if len(stages) == 1 and (m := _ECHO_LITERAL.match(stages[0])):
+        return {"type": "static", "version": m.group(1)}, None
     if not stages or not stages[0].startswith("curl") or len(stages) < 2:
         return fallback
     url_match = _URL.search(stages[0])
     if not url_match:
         return fallback
     url = url_match.group(0)
+    if (m := _ARCH_PAGE.search(url)) and len(stages) == 2:
+        # The package page's heading: [epoch:]pkgver-pkgrel.
+        return _arch_source(m.group(3), m.group(1), release=True), None
+    if (m := _ARCH_DB.search(url)) and len(stages) == 3 and (awk := _ARCH_DB_AWK.match(stages[2])):
+        # The repo database's file list, cut down to pkgver.
+        return _arch_source(awk.group(1), m.group(1), release=False), None
     jq = _jq_expr(stages[1])
     rest = stages[2:]
     if jq is not None:
@@ -222,6 +234,15 @@ def parse_version_command(command: str) -> tuple[Json, str | None]:
     if url.rstrip("/").endswith("Packages") and (m := _GREP_PACKAGE.search(stages[1])):
         return {"type": "deb_packages", "index_url": url, "package": m.group(1).strip()}, None
     return fallback
+
+
+def _arch_source(package: str, repo: str, release: bool) -> Json:
+    source: Json = {"type": "arch_package", "package": package}
+    if repo != "extra":
+        source["repo"] = repo
+    if release:
+        source["release"] = True
+    return source
 
 
 _RSS_ITEM = re.compile(r'item\[title=\\*"([^"$\\]*)\$\(')

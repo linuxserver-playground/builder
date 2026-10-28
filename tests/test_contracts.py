@@ -123,6 +123,28 @@ def test_combined_source_joins_typed_sources() -> None:
     assert errors("image", data)
 
 
+def test_typed_sources_that_replace_commands() -> None:
+    data = _sonarr()
+    for source in (
+        {"type": "github_release", "repo": "o/r", "include": "^arch-", "prerelease": True, "sort": "version"},
+        {"type": "json", "url": "https://x/tags", "jq": ".[].name", "sort": "version"},
+        {"type": "regex", "url": "https://x/", "pattern": "v([0-9.]+)", "sort": "version", "search": "url"},
+        {"type": "arch_package", "package": "darktable", "release": True},
+        {"type": "static", "version": "7.2.7"},
+    ):
+        data["upstream"]["version"] = source
+        validate("image", data)
+    for broken in (
+        {"type": "github_release", "repo": "o/r", "sort": "newest"},
+        {"type": "regex", "url": "https://x/"},
+        {"type": "regex", "url": "https://x/", "pattern": "x", "search": "headers"},
+        {"type": "arch_package"},
+        {"type": "static"},
+    ):
+        data["upstream"]["version"] = broken
+        assert errors("image", data), broken
+
+
 def _bundle() -> dict[str, Any]:
     return {
         "schema": 1,

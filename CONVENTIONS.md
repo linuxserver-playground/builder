@@ -92,6 +92,15 @@ A release is identified by `<upstream>-ls<N>`:
   build date as patch. It is stored bare; as a tag it takes the same `T-` prefix as every other tag of a
   non-default branch (see the table).
 
+The control plane resolves every live branch's `upstream.version` hourly with the build's own resolver and
+dispatches a build when it differs from the branch's newest release, as Jenkins' external triggers did. That
+covers every source type but `os` (rebuilt by the weekly package check) and `deb_repo` (it needs docker).
+Prefer a typed source to `command`: `github_release` (GitHub's latest release, or the list filtered with
+`include`, `exclude`, `prerelease` and `sort`), `deb_packages` and `alpine_apk` (a package index),
+`arch_package`, `json` (jq), `regex` (a page or a redirect), `static` (a version pinned by hand), and
+`combined` to join two. `command` stays for what none of them can say; the control plane runs it with no
+credentials, in an empty directory, and kills it after 120 s.
+
 Tag set published on a live release of branch `B` with tag `T` (`T` = `latest` on the default branch):
 
 | Tag | Example (sonarr master) | Example (sonarr develop) |
@@ -113,7 +122,7 @@ without parsing tag prefixes.
 A mod branch `<target>-<name>` publishes `ghcr.io/linuxserver-playground/mods:<target>-<name>` and
 `:<target>-<name>-<sha7>`; mods have no GitHub Releases and no build number. A mod that packages one upstream
 tool says so in `mod.yml` `upstream` (`url`, and `version`: any `upstream.version` source type above except `os`,
-`command` and `deb_repo`, which the scheduler never runs, `combined` included). Then:
+`command` and `deb_repo`, `combined` included). Then:
 
 - the build resolves it with the same resolver unless it is given a `mod_version`, passes it as the
   `MOD_VERSION` build arg (the Dockerfile declares `ARG MOD_VERSION`; its own lookup is only the fallback for

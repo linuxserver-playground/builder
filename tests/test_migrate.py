@@ -347,6 +347,31 @@ def test_version_command_shapes(command: str, expected: dict[str, Any]) -> None:
     assert todo is None
 
 
+@pytest.mark.parametrize(
+    ("command", "expected"),
+    [
+        ("echo 7.2.7", {"type": "static", "version": "7.2.7"}),
+        ("echo 9.0.2-cli", {"type": "static", "version": "9.0.2-cli"}),
+        (
+            "curl -sL https://archlinux.org/packages/extra/x86_64/darktable/ |awk -F'(<h2>darktable |</h2>)' "
+            "'/<h2>/ {print $2}'",
+            {"type": "arch_package", "package": "darktable", "release": True},
+        ),
+        (
+            "curl -sL https://mirror.rackspace.com/archlinux/extra/os/x86_64/extra.db | tar tzf - | "
+            "awk -F '(-|/)' '/signal-desktop/ {print $3; exit}'",
+            {"type": "arch_package", "package": "signal-desktop"},
+        ),
+    ],
+)
+def test_version_commands_that_become_new_typed_sources(command: str, expected: dict[str, Any]) -> None:
+    assert parse_version_command(command) == (expected, None)
+
+
+def test_echo_of_a_substitution_stays_a_command() -> None:
+    assert parse_version_command("echo $(date +%F)")[0]["type"] == "command"
+
+
 def test_unrecognised_version_command_is_kept_verbatim() -> None:
     command = "docker run --rm alpine sh -c 'echo 1.2.3'"
     source, todo = parse_version_command(command)

@@ -111,7 +111,8 @@
         "type": {
           "enum": [
             "github_release", "github_commit", "gitlab_commit", "codeberg_release", "gitea_release",
-            "json", "npm", "pip", "alpine_apk", "deb_packages", "deb_repo", "blob", "os", "command", "combined"
+            "json", "regex", "npm", "pip", "alpine_apk", "deb_packages", "arch_package", "deb_repo", "blob", "static", "os",
+            "command", "combined"
           ]
         },
         "transform": { "$ref": "#/$defs/transform" },
@@ -128,8 +129,10 @@
             "required": ["repo"],
             "properties": {
               "repo": { "type": "string", "pattern": "^[^/]+/[^/]+$" },
-              "prerelease": { "type": "boolean", "default": false, "description": "false: GitHub's latest stable release. true: newest release including prereleases." },
-              "exclude": { "type": "string", "description": "Regex; releases whose tag matches are skipped." }
+              "prerelease": { "type": "boolean", "default": false, "description": "false: stable releases only; with no other option this is GitHub's latest release. true: prereleases count too." },
+              "include": { "type": "string", "description": "Regex; only releases whose tag matches count." },
+              "exclude": { "type": "string", "description": "Regex; releases whose tag matches are skipped." },
+              "sort": { "enum": ["date", "version"], "default": "date", "description": "Which matching release wins: the newest published, or the highest tag in version order (sort -V)." }
             }
           }
         },
@@ -151,7 +154,42 @@
         },
         {
           "if": { "properties": { "type": { "const": "json" } } },
-          "then": { "required": ["url", "jq"], "properties": { "url": { "type": "string", "format": "uri" }, "jq": { "type": "string", "description": "jq expression applied to the body." } } }
+          "then": {
+            "required": ["url", "jq"],
+            "properties": {
+              "url": { "type": "string", "format": "uri" },
+              "jq": { "type": "string", "description": "jq expression applied to the body." },
+              "sort": { "enum": ["first", "version"], "default": "first", "description": "The first value jq prints, or the highest in version order (sort -V)." }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "regex" } } },
+          "then": {
+            "required": ["url", "pattern"],
+            "properties": {
+              "url": { "type": "string", "format": "uri" },
+              "pattern": { "type": "string", "description": "Python regex, multiline. The version is its `version` group, else group 1, else the whole match." },
+              "sort": { "enum": ["first", "version"], "default": "first", "description": "The first match, or the highest in version order (sort -V)." },
+              "search": { "enum": ["body", "url"], "default": "body", "description": "body: the page. url: the address the URL redirects to, for download links that only name the version there." }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "arch_package" } } },
+          "then": {
+            "required": ["package"],
+            "properties": {
+              "package": { "type": "string" },
+              "repo": { "type": "string", "default": "extra", "description": "core, extra or multilib." },
+              "arch": { "type": "string", "default": "x86_64" },
+              "release": { "type": "boolean", "default": false, "description": "false: pkgver. true: pkgver-pkgrel, so a rebuild of the same version counts too. The epoch is never included." }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "static" } } },
+          "then": { "required": ["version"], "properties": { "version": { "type": "string", "description": "A pinned version, changed by hand." } } }
         },
         {
           "if": { "properties": { "type": { "const": "npm" } } },
@@ -181,7 +219,7 @@
           "if": { "properties": { "type": { "const": "command" } } },
           "then": {
             "required": ["run"],
-            "properties": { "run": { "type": "string", "description": "A bash command printing the version. Escape hatch: prefer a typed source. May use GITHUB_TOKEN." } }
+            "properties": { "run": { "type": "string", "description": "A bash command; its last line is the version. The escape hatch for what no typed source covers. The build may give it GITHUB_TOKEN; the control plane runs it hourly with no credentials, in an empty directory, killed after 120 s." } }
           }
         },
         {
