@@ -1,0 +1,3 @@
+{% for s in upstream.get("sponsor", []) %}
+{{ s.name }}: {{ s.url }}
+{% endfor %}

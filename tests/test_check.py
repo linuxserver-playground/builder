@@ -180,3 +180,16 @@ def test_missing_manifest(tmp_path: Path) -> None:
     found = check_repo(tmp_path, SETTINGS)
     assert len(found) == 1 and found[0].message == "file not found"
     assert main(["check", str(tmp_path)]) == 1
+
+
+def test_stale_donate_txt_fails_and_render_removes_it(sonarr_repo: Path) -> None:
+    manifest = sonarr_repo / "image.yml"
+    text = manifest.read_text(encoding="utf-8")
+    manifest.write_text(
+        text.replace("  sponsor:\n    - { name: Sonarr, url: https://sonarr.tv/donate }\n", ""), encoding="utf-8"
+    )
+    assert "root/donate.txt: <file>: stale (run builder render)" in errors(check_repo(sonarr_repo, SETTINGS))
+    assert ".github/FUNDING.yml: <file>: differs (run builder render)" in errors(check_repo(sonarr_repo, SETTINGS))
+    assert main(["render", str(sonarr_repo)]) == 0
+    assert not (sonarr_repo / "root" / "donate.txt").exists()
+    assert check_repo(sonarr_repo, SETTINGS) == []

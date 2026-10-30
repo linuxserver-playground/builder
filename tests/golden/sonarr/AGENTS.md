@@ -27,6 +27,7 @@ change that looks like an improvement in isolation is often wrong here.
 | `image.yml` | yes | The manifest. Source of truth for README, docs, stores, proxy confs, build and test settings. Schema: `https://github.com/linuxserver-playground/builder/blob/main/schemas/image.schema.json` |
 | `package_versions.txt` | no | Written by the build on the live branch. |
 | `README.md`, `AGENTS.md`, `LICENSE` | no | Generated from `image.yml`. |
+| `.github/FUNDING.yml`, `root/donate.txt` | no | Generated from `upstream.sponsor`: the repo's sponsor buttons and the container log's "To support the app dev(s)" lines. `root/donate.txt` exists only when the manifest lists sponsors. |
 | `.github/workflows/build.yml` | no | Generated; calls the shared workflow `linuxserver-playground/workflows`. |
 | `.github/workflows/pr-report.yml` | no | Generated; the trusted PR report (comment, fork image publishing, cleanup). |
 
@@ -55,7 +56,7 @@ Live branches: master, develop. Each has its own `image.yml`; target the branch 
 
 ```bash
 docker run --rm -v "$PWD":/repo ghcr.io/linuxserver-playground/builder:latest check     # manifest + generated files
-docker run --rm -v "$PWD":/repo ghcr.io/linuxserver-playground/builder:latest render    # regenerate README/AGENTS (live branch only)
+docker run --rm -v "$PWD":/repo ghcr.io/linuxserver-playground/builder:latest render    # regenerate the generated files (live branch only)
 docker build --no-cache --pull -t sonarr:test .
 docker run --rm -e PUID=1000 -e PGID=1000 -e TZ=Etc/UTC -v "$PWD/testconfig:/config" -p 8989:8989 sonarr:test
 ```
@@ -73,5 +74,6 @@ Confirm `[ls.io-init] done.` appears, the app starts, and it survives a restart 
   `safe-to-publish` label, and every new push removes that label again.
 - The build report (tests per architecture, screenshot, package changes, container log) arrives as one comment
   that is updated on every build.
-- Builds of this PR fail if a generated file (`README.md`, `AGENTS.md`, `LICENSE`, the workflows) was edited or if
+- Builds of this PR fail if a generated file (`README.md`, `AGENTS.md`, `LICENSE`, `.github/FUNDING.yml`,
+  `root/donate.txt`, the workflows) was edited or if
   `image.yml` does not validate. Generated files that are merely out of date are re-rendered after merge.

@@ -183,6 +183,28 @@ def test_repo_files_are_the_committed_ones() -> None:
         "README.md",
         "AGENTS.md",
         "LICENSE",
+        ".github/FUNDING.yml",
+        "root/donate.txt",
         ".github/workflows/build.yml",
         ".github/workflows/pr-report.yml",
     )
+
+
+def test_sponsor_links_render_the_funding_file_and_donate_txt() -> None:
+    files = render_all(_sonarr(), SETTINGS)
+    assert files[".github/FUNDING.yml"].splitlines()[1:] == [
+        "github: linuxserver",
+        "open_collective: linuxserver",
+        'custom: ["https://sonarr.tv/donate"]',
+    ]
+    assert files["root/donate.txt"] == "Sonarr: https://sonarr.tv/donate\n"
+
+
+def test_without_sponsors_donate_txt_is_not_rendered() -> None:
+    data = _sonarr()
+    upstream = dict(data["upstream"])  # type: ignore[call-overload]
+    upstream.pop("sponsor")
+    data["upstream"] = upstream
+    files = render_all(data, SETTINGS)
+    assert "root/donate.txt" not in files
+    assert "custom:" not in files[".github/FUNDING.yml"]

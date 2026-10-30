@@ -81,13 +81,14 @@
         "notes": { "$ref": "#/$defs/notes_source" },
         "sponsor": {
           "type": "array",
+          "maxItems": 3,
           "items": {
             "type": "object",
             "additionalProperties": false,
             "required": ["name", "url"],
             "properties": { "name": { "type": "string" }, "url": { "type": "string", "format": "uri" } }
           },
-          "description": "Upstream donation links, written to /donate.txt in the image."
+          "description": "The upstream project's donation pages, up to 3. Rendered into .github/FUNDING.yml (the repo's sponsor buttons) and root/donate.txt, which the base images print at start-up; the site shows them on the image page."
         }
       }
     },
