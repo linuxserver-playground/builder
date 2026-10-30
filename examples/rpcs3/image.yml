@@ -12,7 +12,8 @@ upstream:
     repo: RPCS3/rpcs3-binaries-linux
     require_assets:
       - asset: _linux64\.AppImage$
-      - asset: _linux_arm64\.AppImage$
+      - asset: \.AppImage$
+        repo: RPCS3/rpcs3-binaries-linux-arm64
   notes:
     type: github_release
     repo: RPCS3/rpcs3-binaries-linux

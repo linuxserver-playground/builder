@@ -287,6 +287,10 @@ def test_require_assets_takes_urls_and_asset_patterns() -> None:
         "require_assets": ["https://dl.example/${VERSION}.tar.gz", {"asset": "_linux64\\.AppImage$"}],
     }
     validate("image", data)
+    data["upstream"]["version"]["require_assets"] = [{"asset": "x", "repo": "RPCS3/rpcs3-binaries-linux-arm64"}]
+    validate("image", data)
+    data["upstream"]["version"]["require_assets"] = [{"asset": "x", "repo": "not-a-repo"}]
+    assert errors("image", data)
     data["upstream"]["version"]["require_assets"] = [{"asset": "x", "arch": "amd64"}]
     assert errors("image", data)
     data["upstream"]["version"]["require_assets"] = [{"name": "x"}]

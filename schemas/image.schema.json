@@ -127,7 +127,8 @@
                 "additionalProperties": false,
                 "required": ["asset"],
                 "properties": {
-                  "asset": { "type": "string", "description": "Regex an uploaded asset's file name must match, such as ^codium_${VERSION}_amd64\\.deb$ or _linux64\\.AppImage$." }
+                  "asset": { "type": "string", "description": "Regex an uploaded asset's file name must match, such as ^codium_${VERSION}_amd64\\.deb$ or _linux64\\.AppImage$." },
+                  "repo": { "type": "string", "pattern": "^[^/]+/[^/]+$", "description": "Read the latest release of this repository on the same forge instead of the resolved release: for an architecture whose binaries upstream publishes from a sibling repository the version does not follow (rpcs3's arm64 builds)." }
                 }
               }
             ]

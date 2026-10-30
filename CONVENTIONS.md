@@ -109,7 +109,8 @@ that would fail, holds the branch's release and package checks meanwhile (a held
 slot), and a build resolving the version stops with "assets not ready" too. Each entry is a URL
 template (`${VERSION}` substituted) that must answer HEAD with 200, or `{asset: <regex>}`, an uploaded asset of
 the resolved release whose file name matches (`${VERSION}` is substituted literally; `github_release`,
-`codeberg_release` and `gitea_release` only, read by tag as the Dockerfile reads it). List one entry per asset
+`codeberg_release` and `gitea_release` only, read by tag as the Dockerfile reads it; with `repo`, the latest
+release of that sibling repository instead, for an architecture built from binaries published elsewhere). List one entry per asset
 the Dockerfiles fetch, each platform's own, so the record says which one is late. This is what Jenkins'
 `external_artifact_check` did in shell. The control plane posts to Discord on every check a branch spends
 waiting, amber for the first four and red from the fifth: a release that long without its asset usually means
