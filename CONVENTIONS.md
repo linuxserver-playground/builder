@@ -105,7 +105,8 @@ credentials, in an empty directory, and kills it after 120 s.
 
 A source may list what the build downloads under `require_assets`, and the version only counts once all of it
 is published: the scheduler records "assets not ready" and tries again next hour instead of dispatching a build
-that would fail, and a build resolving the version stops with "assets not ready" too. Each entry is a URL
+that would fail, holds the branch's release and package checks meanwhile (a held package check keeps its weekly
+slot), and a build resolving the version stops with "assets not ready" too. Each entry is a URL
 template (`${VERSION}` substituted) that must answer HEAD with 200, or `{asset: <regex>}`, an uploaded asset of
 the resolved release whose file name matches (`${VERSION}` is substituted literally; `github_release`,
 `codeberg_release` and `gitea_release` only, read by tag as the Dockerfile reads it). List one entry per asset
