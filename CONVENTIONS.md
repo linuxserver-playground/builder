@@ -103,6 +103,17 @@ Prefer a typed source to `command`: `github_release` (GitHub's latest release, o
 `combined` to join two. `command` stays for what none of them can say; the control plane runs it with no
 credentials, in an empty directory, and kills it after 120 s.
 
+A source may list what the build downloads under `require_assets`, and the version only counts once all of it
+is published: the scheduler records "assets not ready" and tries again next hour instead of dispatching a build
+that would fail, and a build resolving the version stops with "assets not ready" too. Each entry is a URL
+template (`${VERSION}` substituted) that must answer HEAD with 200, or `{asset: <regex>}`, an uploaded asset of
+the resolved release whose file name matches (`${VERSION}` is substituted literally; `github_release`,
+`codeberg_release` and `gitea_release` only, read by tag as the Dockerfile reads it). List one entry per asset
+the Dockerfiles fetch, each platform's own, so the record says which one is late. This is what Jenkins'
+`external_artifact_check` did in shell. The control plane posts to Discord when a branch has waited on assets
+for six checks in a row, and daily after that: a release that long without its asset usually means upstream
+renamed it, and the pattern and the Dockerfile need updating.
+
 Tag set published on a live release of branch `B` with tag `T` (`T` = `latest` on the default branch):
 
 | Tag | Example (sonarr master) | Example (sonarr develop) |

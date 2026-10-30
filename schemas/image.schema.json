@@ -118,8 +118,20 @@
         "transform": { "$ref": "#/$defs/transform" },
         "require_assets": {
           "type": "array",
-          "items": { "type": "string" },
-          "description": "URL templates (${VERSION} substituted) that must return 200 before a build is triggered. Replaces external_artifact_check."
+          "description": "What must be published before the resolved version counts; the scheduler tries again hourly until it is, and never dispatches a build before. A string is a URL template (${VERSION} substituted) that must answer HEAD with 200. An object names an asset of the resolved release by a regex on its file name (${VERSION} substituted literally); release sources only. Replaces external_artifact_check.",
+          "items": {
+            "oneOf": [
+              { "type": "string" },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["asset"],
+                "properties": {
+                  "asset": { "type": "string", "description": "Regex an uploaded asset's file name must match, such as ^codium_${VERSION}_amd64\\.deb$ or _linux64\\.AppImage$." }
+                }
+              }
+            ]
+          }
         }
       },
       "allOf": [

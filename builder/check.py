@@ -70,6 +70,7 @@ def check_repo(repo_dir: Path, settings: Settings | None = None, drift_level: st
     findings.extend(check_dockerfiles(repo_dir, manifest))
     findings.extend(check_s6_scripts(repo_dir))
     findings.extend(check_kind(manifest))
+    findings.extend(check_require_assets(manifest))
     findings.extend(check_changelog(manifest))
     findings.extend(check_branch(repo_dir, manifest))
     findings.extend(check_credentials(repo_dir))
@@ -140,6 +141,31 @@ def check_kind(manifest: Manifest) -> list[Finding]:
         message = "baseimage-* repos are base images; set kind: base"
     line = manifest.line_of(("kind",)) or manifest.line_of(("name",))
     return [_error(str(manifest.path), "kind", message, line)]
+
+
+RELEASE_SOURCES = ("github_release", "codeberg_release", "gitea_release")
+"""The version sources whose releases carry assets (workflows' resolver keeps the same list)."""
+
+
+def check_require_assets(manifest: Manifest) -> list[Finding]:
+    """An `{asset: <regex>}` entry reads the resolved release's asset list, so it needs a release source; the
+    resolver would refuse it hourly otherwise. A bad regex is caught here rather than at the first check."""
+    source = manifest.data.get("upstream", {}).get("version", {})
+    entries = source.get("require_assets") or []
+    findings: list[Finding] = []
+    for index, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            continue
+        field = f"upstream.version.require_assets[{index}].asset"
+        line = manifest.line_of(("upstream", "version", "require_assets", index, "asset"))
+        if source.get("type") not in RELEASE_SOURCES:
+            message = f"asset patterns need one of {', '.join(RELEASE_SOURCES)}, not {source.get('type')!r}"
+            findings.append(_error(str(manifest.path), field, message, line))
+        try:
+            re.compile(str(entry["asset"]).replace("${VERSION}", "V").replace("$VERSION", "V"))
+        except re.error as exc:
+            findings.append(_error(str(manifest.path), field, f"not a valid regex: {exc}", line))
+    return findings
 
 
 def check_changelog(manifest: Manifest) -> list[Finding]:

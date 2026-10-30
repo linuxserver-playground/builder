@@ -256,7 +256,47 @@ def test_escaped_github_expressions_survive_rendering() -> None:
     # emby's external_artifact_check escapes `${{ secrets.CR_PAT }}`; re-rendering it must not raise.
     _, _, todos = _migrate("emby")
     assert any("${{ secrets.CR_USER }}" in t for t in todos)
-    assert any(t.startswith("dropped external_artifact_check: rewrite it as upstream.version") for t in todos)
+    assert not any("require_assets" in t for t in todos)
+
+
+def test_artifact_check_greps_become_asset_patterns() -> None:
+    manifest, _, _ = _migrate("emby")
+    assert manifest["upstream"]["version"]["require_assets"] == [
+        {"asset": "emby-server-deb_${VERSION}_arm64.deb$"},
+        {"asset": "emby-server-deb_${VERSION}_amd64.deb$"},
+    ]
+    validate("image", manifest)
+
+
+def test_artifact_check_head_becomes_a_url_template() -> None:
+    readme_vars, jenkins_vars, dockerfile = _load("sonarr")
+    jenkins_vars["custom_version_command"] = "curl -sX GET https://x.example/v | jq -r '.version'"
+    jenkins_vars["external_artifact_check"] = (
+        'ASSETS=$(curl -o /dev/null -sI -w "%{http_code}\\n" "https://dl.example/x-${EXT_RELEASE}-linux-x64.tar.xz")\n'
+        'if [ ${ASSETS} == "200" ]; then\n  artifacts_found="true"\nelse\n  artifacts_found="false"\nfi\n'
+    )
+    manifest, _, todos = migrate(readme_vars, jenkins_vars, dockerfile)
+    assert manifest["upstream"]["version"]["require_assets"] == ["https://dl.example/x-${VERSION}-linux-x64.tar.xz"]
+    assert not any("require_assets" in t for t in todos)
+
+
+def test_artifact_check_that_needs_a_hand_is_a_todo() -> None:
+    readme_vars, jenkins_vars, dockerfile = _load("sonarr")
+    jenkins_vars["external_artifact_check"] = (
+        "if curl -IfSsL \"https://dl.example/$(echo ${EXT_RELEASE} | sed 's/^v//g')/x_amd64.deb\"; then\n"
+        '  artifacts_found="true"\nelse\n  artifacts_found="false"\nfi\n'
+    )
+    manifest, _, todos = migrate(readme_vars, jenkins_vars, dockerfile)
+    assert "require_assets" not in manifest["upstream"]["version"]
+    assert any("external_artifact_check" in t and "write the URL template by hand" in t for t in todos)
+    jenkins_vars["external_artifact_check"] = (
+        'assets=$(curl -s "https://api.github.com/repos/a/b/releases/tags/${EXT_RELEASE}"'
+        " | jq -r '.assets[].browser_download_url')\n"
+        'if grep -q "x_amd64.deb" <<< "${assets}"; then\n  artifacts_found="true"\nfi\n'
+    )
+    manifest, _, todos = migrate(readme_vars, jenkins_vars, dockerfile)
+    assert "require_assets" not in manifest["upstream"]["version"]
+    assert any("version source is json" in t for t in todos)
 
 
 def test_groovy_escapes_are_undoubled() -> None:

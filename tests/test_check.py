@@ -137,6 +137,18 @@ def test_kind_base_needs_a_baseimage_name(sonarr_repo: Path) -> None:
     assert "baseimage-" in found[0].message
 
 
+def test_asset_patterns_need_a_release_source_and_a_valid_regex(sonarr_repo: Path) -> None:
+    manifest = sonarr_repo / "image.yml"
+    text = manifest.read_text(encoding="utf-8")
+    assert "    type: json\n" in text
+    block = "    type: json\n    require_assets:\n      - asset: 'x('\n"
+    manifest.write_text(text.replace("    type: json\n", block, 1), encoding="utf-8")
+    found = [f for f in check_repo(sonarr_repo, SETTINGS) if f.field.startswith("upstream.version.require_assets")]
+    assert len(found) == 2
+    assert "need one of github_release" in found[0].message and found[0].line is not None
+    assert "not a valid regex" in found[1].message
+
+
 def test_credentials_are_caught(sonarr_repo: Path) -> None:
     secret = sonarr_repo / "root" / "secret.env"
     secret.write_text("TOKEN=ghp_" + "a" * 36 + "\nKEY=AKIAABCDEFGHIJKLMNOP\n", encoding="utf-8")

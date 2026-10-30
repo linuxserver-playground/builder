@@ -236,6 +236,39 @@ def parse_version_command(command: str) -> tuple[Json, str | None]:
     return fallback
 
 
+_ASSET_GREP = re.compile(r"""grep\s+(?:-[a-zA-Z]+\s+)*(['"])(.+?)\1\s*<<<""")
+"""`grep -q "<pattern>" <<< "${assets}"`: one asset the legacy check wanted in the release's asset list."""
+_RELEASE_SOURCES = ("github_release", "codeberg_release", "gitea_release")
+
+
+def parse_artifact_check(command: str, version_type: str) -> tuple[list[Any] | None, str | None]:
+    """Recognise the common external_artifact_check shapes as `require_assets` entries. A check that greps the
+    release's `browser_download_url` list becomes one `{asset: <pattern>}` per grep (the version placeholder
+    becomes `${VERSION}`); a check that HEADs one URL becomes that URL template. Anything else, or a pattern built
+    with a command substitution, is kept as a TODO."""
+    text = command.strip()
+    todo = "external_artifact_check not recognised; rewrite it as upstream.version.require_assets"
+    if "browser_download_url" in text:
+        patterns = [m.group(2) for m in _ASSET_GREP.finditer(text)]
+        if not patterns:
+            return None, todo
+        if version_type not in _RELEASE_SOURCES:
+            return None, f"external_artifact_check greps release assets but the version source is {version_type}"
+        if any("$(" in pattern for pattern in patterns):
+            return None, "external_artifact_check builds its asset name with a command; write the asset pattern by hand"
+        return [{"asset": pattern.replace("${EXT_RELEASE}", "${VERSION}")} for pattern in patterns], None
+    by_hand = "external_artifact_check builds its URL with more than the version; write the URL template by hand"
+    urls = [m.group(0) for m in _URL.finditer(text) if "EXT_RELEASE" in m.group(0)]
+    if len(urls) == 1 and "curl" in text:
+        url = urls[0].replace("${EXT_RELEASE}", "${VERSION}")
+        if "$(" in url or re.search(r"\$\{?[A-Z_]+", url.replace("${VERSION}", "")):
+            return None, by_hand
+        return [url], None
+    if "curl" in text and "$(" in text and "EXT_RELEASE" in text:
+        return None, by_hand
+    return None, todo
+
+
 def _arch_source(package: str, repo: str, release: bool) -> Json:
     source: Json = {"type": "arch_package", "package": package}
     if repo != "extra":
@@ -324,6 +357,13 @@ class Migrator:
         out["version"] = version
         if version_todo:
             self.todo("upstream", "version", version_todo)
+        check = self.get("external_artifact_check")
+        if check:
+            entries, check_todo = parse_artifact_check(groovy_unescape(str(check)), str(version.get("type")))
+            if entries:
+                version["require_assets"] = entries
+            if check_todo:
+                self.todo("upstream", "version", check_todo)
         notes, notes_todo = self.notes_source()
         if notes is not None:
             out["notes"] = notes

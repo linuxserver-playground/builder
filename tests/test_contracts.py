@@ -277,3 +277,17 @@ def test_rss_notes_need_a_feed_and_an_item_title() -> None:
     assert any("title" in e.message for e in errors("image", data))
     data["upstream"]["notes"]["title"] = "calibre ${VERSION}"
     validate("image", data)
+
+
+def test_require_assets_takes_urls_and_asset_patterns() -> None:
+    data = _sonarr()
+    data["upstream"]["version"] = {
+        "type": "github_release",
+        "repo": "RPCS3/rpcs3-binaries-linux",
+        "require_assets": ["https://dl.example/${VERSION}.tar.gz", {"asset": "_linux64\\.AppImage$"}],
+    }
+    validate("image", data)
+    data["upstream"]["version"]["require_assets"] = [{"asset": "x", "arch": "amd64"}]
+    assert errors("image", data)
+    data["upstream"]["version"]["require_assets"] = [{"name": "x"}]
+    assert errors("image", data)

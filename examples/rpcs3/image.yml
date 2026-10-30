@@ -1,0 +1,91 @@
+# The manifest for docker-rpcs3. Schema: https://github.com/linuxserver-playground/builder/blob/main/schemas/image.schema.json
+schema: 1
+name: rpcs3
+
+summary: |-
+  [RPCS3](https://rpcs3.net/) is a multi-platform open-source Sony PlayStation 3 emulator and debugger written in C++ for Windows, Linux, macOS and FreeBSD.
+
+upstream:
+  url: https://rpcs3.net/
+  version:
+    type: github_release
+    repo: RPCS3/rpcs3-binaries-linux
+    require_assets:
+      - asset: _linux64\.AppImage$
+      - asset: _linux_arm64\.AppImage$
+  notes:
+    type: github_release
+    repo: RPCS3/rpcs3-binaries-linux
+
+release:
+  branch: master
+  tag: latest
+  channel: stable
+
+build:
+  base: selkies
+  version_arg: RPCS3_VERSION
+  platforms:
+  - amd64
+  - arm64
+
+test:
+  startup_timeout: 120
+  env:
+    TZ: US/Pacific
+  web:
+    port: 3001
+    scheme: https
+    auth: user:password
+
+runtime:
+  ports:
+  - internal: '3000'
+    description: HTTP RPCS3 desktop gui must be proxied.
+  - internal: '3001'
+    description: HTTPS RPCS3 desktop gui.
+  volumes:
+  - path: /config
+    host_path: /path/to/config
+    description: Users home directory in the container, stores local files and settings
+  custom:
+  - flag: shm-size
+    compose: shm_size
+    value: 1gb
+    description: This is needed for RPCS3 to function.
+
+docs:
+  categories:
+  - Games
+  logo: https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/rpcs3-logo.png
+  setup: |
+    The application can be accessed at:
+
+    * https://yourhost:3001/
+
+    **Note: for gamepads to function select SDL as the gamepad driver under "Handlers".**
+  notices:
+    strict_proxy: true
+    selkies:
+      enabled: true
+      nvidia: true
+
+proxy:
+  port: 3001
+  scheme: https
+  subdomain: true
+  subfolder:
+    supported: false
+
+changelog:
+- date: '2026-07-30'
+  text: Start ingesting head appimage again, add notes on using SDL for controller support.
+- date: '2026-03-20'
+  text: |-
+    Pin back to latest v0.0.37 build to function, make Wayland default disable with PIXELFLUX_WAYLAND=false.
+- date: '2025-12-20'
+  text: Add Wayland init logic.
+- date: '2025-09-22'
+  text: Rebase to Debian Trixie.
+- date: '2025-06-19'
+  text: Initial release.
