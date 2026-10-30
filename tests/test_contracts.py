@@ -279,6 +279,16 @@ def test_rss_notes_need_a_feed_and_an_item_title() -> None:
     validate("image", data)
 
 
+def test_notes_transform_reshapes_the_version_like_a_version_source() -> None:
+    data = _sonarr()
+    strip = [{"regex": "-r\\d+$", "replace": ""}]
+    data["upstream"]["notes"] = {"type": "github_release", "repo": "nginx/nginx", "tag": "release-${VERSION}"}
+    data["upstream"]["notes"]["transform"] = strip
+    validate("image", data)
+    data["upstream"]["notes"]["transform"] = [{"regex": "-r\\d+$"}]
+    assert any("replace" in e.message for e in errors("image", data))
+
+
 def test_require_assets_takes_urls_and_asset_patterns() -> None:
     data = _sonarr()
     data["upstream"]["version"] = {

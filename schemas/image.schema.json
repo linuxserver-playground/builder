@@ -263,10 +263,11 @@
         "repo": { "type": "string" },
         "base_url": { "type": "string", "format": "uri" },
         "tag": { "type": "string", "description": "Template for the release tag, e.g. 'v${VERSION}'. Defaults to '${VERSION}'." },
+        "transform": { "$ref": "#/$defs/transform", "description": "Applied to the upstream version before it is substituted anywhere in this block: strip a packaging suffix (Alpine's -rN, Arch's -N, Debian's +dfsg...) or reshape it into the tag upstream uses." },
         "project_id": { "type": "integer" },
         "branch": { "type": "string" },
         "url": { "type": "string" },
-        "jq": { "type": "string" },
+        "jq": { "type": "string", "description": "json: the expression whose whole output (every line) is the notes; ${VERSION} is substituted." },
         "title": { "type": "string", "description": "rss: template for the title of the feed item that holds the notes, e.g. 'calibre ${VERSION}'. The version also matches without a leading v and without trailing .0 parts (9.17.0 matches 'calibre 9.17'). The item's description, usually HTML, is the notes." },
         "run": { "type": "string" }
       }

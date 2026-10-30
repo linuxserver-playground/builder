@@ -294,6 +294,14 @@ The Release body has three sections, in order: **CI**, a link to the build's CI 
 branch; **Upstream changes**, the text fetched by `upstream.notes`, verbatim, with its source URL. The
 hub stores all three.
 
+`upstream.notes` names where the text comes from: `github_release`, `codeberg_release` and `gitea_release` (the
+release body, looked up by `tag`, a template over `${VERSION}`), `github_commit` and `gitlab_commit` (the commit
+message of the version), `json` (the whole output of a jq expression), `rss` (the feed item titled after the
+version), `command`, or `none`. The version is the one the build resolved, packaging suffix and all; a notes
+block whose source spells it differently lists `transform` substitutions, applied before `${VERSION}` is
+substituted anywhere in the block (`-r\d+$` to `` for an Alpine package, `-\d+$` for an Arch one). A fetch that
+finds nothing leaves the section empty rather than failing the release.
+
 ## 8. Commits, pull requests, agents
 
 - Commit subjects are short imperative sentences: `Add krb5-libs for postgresql support`. No
