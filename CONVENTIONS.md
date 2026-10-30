@@ -111,9 +111,9 @@ template (`${VERSION}` substituted) that must answer HEAD with 200, or `{asset: 
 the resolved release whose file name matches (`${VERSION}` is substituted literally; `github_release`,
 `codeberg_release` and `gitea_release` only, read by tag as the Dockerfile reads it). List one entry per asset
 the Dockerfiles fetch, each platform's own, so the record says which one is late. This is what Jenkins'
-`external_artifact_check` did in shell. The control plane posts to Discord when a branch has waited on assets
-for six checks in a row, and daily after that: a release that long without its asset usually means upstream
-renamed it, and the pattern and the Dockerfile need updating.
+`external_artifact_check` did in shell. The control plane posts to Discord on every check a branch spends
+waiting, amber for the first four and red from the fifth: a release that long without its asset usually means
+upstream renamed it, and the pattern and the Dockerfile need updating.
 
 Tag set published on a live release of branch `B` with tag `T` (`T` = `latest` on the default branch):
 
