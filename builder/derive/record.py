@@ -4,11 +4,12 @@ files it already has. The hub ingests a release by reading build.json and this f
 package documents, layer lists and test reports and computing the diff and the vulnerability scan itself, so a
 release reaches the website in the time of one small download. Schema: schemas/record.schema.json.
 
-    builder record out/ [--previous prev/] [--no-scan] [--no-base]
+    builder record out/ [--previous prev/] [--compare compare.json] [--no-scan] [--no-base]
 
 `prev/` holds the previous release of the branch: its build.json, and its record.json or, for a release made
-before records existed, its packages.<arch>.json.gz. A part that cannot be derived is left out and its reason
-listed under `errors`; the hub derives what is missing itself.
+before records existed, its packages.<arch>.json.gz. `compare.json` (default `prev/compare.json`) is GitHub's
+compare payload between the two builds' commits; with it the diff lists the commits and what they touched. A part
+that cannot be derived is left out and its reason listed under `errors`; the hub derives what is missing itself.
 """
 
 from __future__ import annotations
@@ -101,6 +102,7 @@ def build_record(
     out: Path,
     *,
     previous: Path | None = None,
+    compare: Path | None = None,
     scanner: Scanner | None = None,
     fetch_base: Callable[[str, str | None], Json] | None = base_layers,
     now: Callable[[], str] = _now,
@@ -123,7 +125,11 @@ def build_record(
     if previous and old is None:
         errors.append("diff: the previous release's build.json could not be read; diffed as the first build")
     old_packages = previous_packages(previous) if previous and old is not None else None
-    diff = diff_builds(bundle, old, packages or None, old_packages)
+    compare_path = compare if compare is not None else (previous / "compare.json" if previous else None)
+    compared = _json(compare_path) if compare_path is not None else None
+    if compare is not None and compared is None:
+        errors.append(f"commits: {compare} could not be read; the diff lists no commits")
+    diff = diff_builds(bundle, old, packages or None, old_packages, compared if isinstance(compared, dict) else None)
 
     vulns: dict[str, Json] = {}
     if scanner is not None:

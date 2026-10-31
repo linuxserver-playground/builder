@@ -9,6 +9,7 @@ from __future__ import annotations
 import difflib
 from typing import Any
 
+from . import commits as commits_module
 from .packages import compare_versions
 
 Json = dict[str, Any]
@@ -118,13 +119,17 @@ def classify(
     reason: str,
     commit: tuple[str | None, str | None] = (None, None),
     source: str | None = None,
+    commits: Json | None = None,
 ) -> tuple[str, list[str]]:
     """`commit` is the repository commit of the previous and this build, `source` the manifest's version source
-    type: an `os` image's version is the hash of package_versions.txt, so its change is a package refresh."""
+    type: an `os` image's version is the hash of package_versions.txt, so its change is a package refresh.
+    `commits` is `commits.summarise` over the range between the two (None when nobody fetched it): a push whose
+    commits touched nothing that reaches the image (README, the package table) is then not a LinuxServer change."""
     if initial:
         return "initial", ["first build of this branch in the hub"]
     reasons: list[str] = []
     kinds: list[str] = []
+    touches_image = commits_module.changes_image(commits)
     if upstream_changed:
         kinds.append("upstream")
         if source == "os":
@@ -134,7 +139,10 @@ def classify(
     if dockerfile_changed:
         kinds.append("linuxserver")
         reasons.append("Dockerfile changed")
-    elif reason == "push" and not upstream_changed and not base_changed:
+    elif touches_image:
+        kinds.append("linuxserver")
+        reasons.append("repository files that reach the image changed (image.yml or root/)")
+    elif reason == "push" and not upstream_changed and not base_changed and touches_image is None:
         kinds.append("linuxserver")
         reasons.append("built from a push with the same upstream and base (root/ or build settings changed)")
     if base_changed:
@@ -144,7 +152,10 @@ def classify(
         reasons.append("packages changed")
     old_commit, new_commit = commit
     if old_commit and new_commit and old_commit != new_commit:
-        reasons.append(f"repository at a newer commit ({old_commit[:7]} → {new_commit[:7]})")
+        if commits is not None:
+            reasons.append(commits_module.describe(commits, old_commit, new_commit))
+        else:
+            reasons.append(f"repository at a newer commit ({old_commit[:7]} → {new_commit[:7]})")
     if len(kinds) > 1:
         return "mixed", reasons
     if kinds:
@@ -154,8 +165,16 @@ def classify(
     return "none", reasons or ["nothing observable changed"]
 
 
-def diff_builds(new: Json, old: Json | None, new_packages: Packages | None, old_packages: Packages | None) -> Json:
-    """The diff record stored next to a build. `old` is None for the first build of a branch."""
+def diff_builds(
+    new: Json,
+    old: Json | None,
+    new_packages: Packages | None,
+    old_packages: Packages | None,
+    compare: Json | None = None,
+) -> Json:
+    """The diff record stored next to a build. `old` is None for the first build of a branch. `compare` is GitHub's
+    compare payload between the two builds' commits, when the caller fetched it: the commits then appear under
+    `commit` with the areas they touched, and the classification reads them."""
     initial = old is None
     old_version = old["version"]["upstream"] if old else None
     upstream_changed = bool(old) and old_version != new["version"]["upstream"]
@@ -177,6 +196,7 @@ def diff_builds(new: Json, old: Json | None, new_packages: Packages | None, old_
     old_commit = old.get("commit") if old else None
     new_commit = new.get("commit")
     commit_changed = bool(old_commit and new_commit and old_commit != new_commit)
+    commits = commits_module.summarise(compare) if commit_changed and isinstance(compare, dict) else None
     classification, reasons = classify(
         initial=initial,
         upstream_changed=upstream_changed,
@@ -186,6 +206,7 @@ def diff_builds(new: Json, old: Json | None, new_packages: Packages | None, old_
         reason=str(new.get("reason", "")),
         commit=(old_commit, new_commit),
         source=new["version"].get("source"),
+        commits=commits,
     )
     repository = new.get("repository")
     compare_url = None
@@ -201,7 +222,13 @@ def diff_builds(new: Json, old: Json | None, new_packages: Packages | None, old_
         "classification": classification,
         "reasons": reasons,
         "upstream": {"from": old_version, "to": new["version"]["upstream"], "changed": upstream_changed},
-        "commit": {"from": old_commit, "to": new_commit, "changed": commit_changed, "compare_url": compare_url},
+        "commit": {
+            "from": old_commit,
+            "to": new_commit,
+            "changed": commit_changed,
+            "compare_url": compare_url,
+            **(commits or {}),
+        },
         "trigger": new.get("reason"),
         "base": {"from": old_base, "to": new["base"], "changed": base_changed},
         "size": _size_diff(old, new),

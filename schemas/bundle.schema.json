@@ -31,7 +31,7 @@
     },
     "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
     "created": { "type": "string", "format": "date-time" },
-    "reason": { "enum": ["push", "upstream", "packages", "rebuild", "manual", "pull_request"], "description": "Why this build ran." },
+    "reason": { "enum": ["push", "upstream", "packages", "rebuild", "manual", "pull_request"], "description": "Why this build ran: a push to the branch, the hourly upstream check (a new upstream version), the weekly package check (releases only when the installed packages changed), the release check (the head had no release) or a member's rebuild, a manual dispatch, a pull request." },
     "previous": {
       "type": "object",
       "additionalProperties": false,

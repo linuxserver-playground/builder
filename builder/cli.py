@@ -49,6 +49,9 @@ def _parser() -> argparse.ArgumentParser:
     )
     record.add_argument("repo_dir", nargs="?", default=".", metavar="out_dir", help="the directory with build.json")
     record.add_argument("--previous", help="directory with the previous release's build.json and record.json")
+    record.add_argument(
+        "--compare", help="GitHub's compare payload between the two builds' commits (default: <previous>/compare.json)"
+    )
     record.add_argument("--no-scan", action="store_true", help="leave the vulnerability scan to the hub")
     record.add_argument("--no-base", action="store_true", help="do not read the base image's layers from its registry")
 
@@ -141,7 +144,7 @@ def cmd_render_mod(repo_dir: Path, settings: Settings, check: bool) -> int:
     return 1 if stale or findings else 0
 
 
-def cmd_record(out: Path, previous: str | None, scan: bool, base: bool) -> int:
+def cmd_record(out: Path, previous: str | None, compare: str | None, scan: bool, base: bool) -> int:
     from contracts import ContractError, validate
 
     from .derive.record import build_record, write_record
@@ -152,6 +155,7 @@ def cmd_record(out: Path, previous: str | None, scan: bool, base: bool) -> int:
     record = build_record(
         out,
         previous=Path(previous) if previous else None,
+        compare=Path(compare) if compare else None,
         scanner=scanner,
         fetch_base=base_layers if base else None,
     )
@@ -198,7 +202,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "migrate":
             return cmd_migrate(repo_dir, args.out)
         if args.command == "record":
-            return cmd_record(repo_dir, args.previous, not args.no_scan, not args.no_base)
+            return cmd_record(repo_dir, args.previous, args.compare, not args.no_scan, not args.no_base)
         return cmd_snippets(repo_dir, settings, args.format, args.required_only)
     except ManifestError as exc:
         print(exc, file=sys.stderr)

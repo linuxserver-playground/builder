@@ -39,13 +39,44 @@
         "classification": { "enum": ["initial", "upstream", "linuxserver", "base", "packages", "mixed", "none"] },
         "commit": {
           "type": "object",
-          "description": "The repository commit of the previous release and this one, with GitHub's compare page when they differ (contracts 1.14).",
+          "description": "The repository commit of the previous release and this one, with GitHub's compare page when they differ (contracts 1.14), and the commits between them with what they touched when the build fetched the compare (contracts 1.15).",
           "required": ["from", "to", "changed"],
           "properties": {
             "from": { "type": ["string", "null"] },
             "to": { "type": ["string", "null"] },
             "changed": { "type": "boolean" },
-            "compare_url": { "type": ["string", "null"], "format": "uri" }
+            "compare_url": { "type": ["string", "null"], "format": "uri" },
+            "commits": {
+              "type": "array",
+              "description": "The commits of the range, oldest first as GitHub lists them (at most 250).",
+              "items": {
+                "type": "object",
+                "required": ["sha", "subject", "bot"],
+                "properties": {
+                  "sha": { "type": "string" },
+                  "subject": { "type": "string" },
+                  "author": { "type": "object", "properties": { "name": { "type": ["string", "null"] }, "login": { "type": ["string", "null"] } } },
+                  "date": { "type": ["string", "null"] },
+                  "url": { "type": ["string", "null"] },
+                  "bot": { "type": "boolean", "description": "The pipeline's own commit: a [bot] account, or one of the two subjects the shared workflow writes (Update package versions, Update generated files)." }
+                }
+              }
+            },
+            "count": { "type": "integer", "description": "GitHub's total for the range; above the commits listed when it exceeds 250." },
+            "truncated": { "type": "boolean", "description": "GitHub listed only part of the commits or files, so `areas` may be incomplete." },
+            "areas": {
+              "type": "object",
+              "description": "Files changed in the range per area: manifest (image.yml), dockerfile, root (root/), generated (what builder render writes), packages (package_versions.txt), other. Only areas with changes; the first three can change the image.",
+              "additionalProperties": false,
+              "properties": {
+                "manifest": { "type": "integer", "minimum": 1 },
+                "dockerfile": { "type": "integer", "minimum": 1 },
+                "root": { "type": "integer", "minimum": 1 },
+                "generated": { "type": "integer", "minimum": 1 },
+                "packages": { "type": "integer", "minimum": 1 },
+                "other": { "type": "integer", "minimum": 1 }
+              }
+            }
           }
         },
         "trigger": { "type": ["string", "null"], "description": "build.json's `reason`: why this build ran (contracts 1.14)." }

@@ -310,3 +310,90 @@ def test_base_layers_reads_an_index() -> None:
     base = base_layers("ghcr.io/linuxserver/baseimage-alpine:3.24", "sha256:index", get)
     assert base["platforms"] == {"amd64": {"digest": "sha256:a", "layers": ["sha256:l1"]}}
     assert calls[0] == "https://ghcr.io/token"
+
+
+# ------------------------------------------------------------------------------------------ commits between builds
+
+
+def _compare_commit(sha: str, subject: str, name: str, login: str) -> Json:
+    return {
+        "sha": sha,
+        "html_url": f"https://github.com/o/docker-x/commit/{sha}",
+        "commit": {"message": f"{subject}\n\nlonger body", "author": {"name": name, "date": "2026-10-30T19:36:42Z"}},
+        "author": {"login": login},
+    }
+
+
+HUMAN = _compare_commit("a" * 40, "Add the upstream donation links", "thelamer", "thelamer")
+BOT = _compare_commit("b" * 40, "Update generated files [skip ci]", "github-actions[bot]", "github-actions[bot]")
+TABLE = _compare_commit("c" * 40, "Update package versions [skip ci]", "github-actions[bot]", "github-actions[bot]")
+COMPARE: Json = {
+    "total_commits": 2,
+    "commits": [HUMAN, BOT],
+    "files": [{"filename": f} for f in ("image.yml", "README.md", ".github/FUNDING.yml", "root/donate.txt")],
+}
+
+
+def test_commit_summary_lists_commits_areas_and_bots() -> None:
+    from builder.derive import commits
+
+    out = commits.summarise(COMPARE)
+    assert [c["subject"] for c in out["commits"]] == [
+        "Add the upstream donation links",
+        "Update generated files [skip ci]",
+    ]
+    assert [c["bot"] for c in out["commits"]] == [False, True]
+    assert out["commits"][0]["author"] == {"name": "thelamer", "login": "thelamer"}
+    assert out["count"] == 2 and out["truncated"] is False
+    # root/donate.txt is a generated file, not root/
+    assert out["areas"] == {"manifest": 1, "generated": 3}
+    assert commits.changes_image(out) is True
+    span = f"{'a' * 7} → {'b' * 7}"
+    assert commits.describe(out, "a" * 40, "b" * 40) == f"2 commits ({span}): changed image.yml, generated files"
+
+
+def test_commit_summary_knows_the_pipelines_own_table_update() -> None:
+    from builder.derive import commits
+
+    table = {"total_commits": 1, "commits": [TABLE], "files": [{"filename": "package_versions.txt"}]}
+    out = commits.summarise(table)
+    assert out["areas"] == {"packages": 1} and commits.changes_image(out) is False
+    line = commits.describe(out, "1" * 40, "2" * 40)
+    assert line == "1 commit (1111111 → 2222222): the pipeline's own package table update"
+    assert commits.area_of("Dockerfile.aarch64") == "dockerfile"
+    assert commits.area_of("root/etc/cont-init.d/10-x") == "root"
+    assert commits.area_of("docs/x.md") == "other"
+    truncated = commits.summarise({"total_commits": 300, "commits": table["commits"], "files": []})
+    assert truncated["truncated"] is True and commits.changes_image(truncated) is None
+    assert commits.changes_image(None) is None
+
+
+def test_diff_reads_the_commits_when_the_compare_is_at_hand(build: tuple[Path, Path]) -> None:
+    out, prev = build
+    new, old = json.loads((out / "build.json").read_text()), json.loads((prev / "build.json").read_text())
+    rows = {"amd64": normalise(json.loads(gzip.decompress((out / "packages.amd64.json.gz").read_bytes())))}
+    # Same upstream, base and Dockerfile, a push whose commits only touched the README: not a LinuxServer change.
+    same = copy.deepcopy(new)
+    same["version"]["upstream"] = old["version"]["upstream"]
+    same["reason"] = "push"
+    same["commit"] = "f" * 40
+    compare = {"total_commits": 1, "commits": [HUMAN], "files": [{"filename": "README.md"}]}
+    diff = diff_builds(same, old, rows, rows, compare)
+    assert diff["commit"]["commits"][0]["subject"] == "Add the upstream donation links"
+    assert diff["commit"]["areas"] == {"generated": 1} and diff["commit"]["count"] == 1
+    assert diff["classification"] == "none"
+    assert diff["reasons"] == [f"1 commit ({old['commit'][:7]} → {'f' * 7}): changed generated files"]
+    # Without the compare the push is read as a LinuxServer change, as before.
+    blind = diff_builds(same, old, rows, rows)
+    assert blind["classification"] == "linuxserver" and "commits" not in blind["commit"]
+    # The record reads prev/compare.json by default and validates with it.
+    (out / "build.json").write_text(json.dumps(new | {"commit": "b" * 40}))
+    (prev / "compare.json").write_text(json.dumps(COMPARE))
+    rec = record_module.build_record(out, previous=prev, fetch_base=None, now=lambda: NOW)
+    validate("record", rec)
+    assert rec["diff"]["commit"]["count"] == 2 and rec["diff"]["classification"] == "mixed"
+    missing = record_module.build_record(
+        out, previous=prev, compare=out / "nope.json", fetch_base=None, now=lambda: NOW
+    )
+    assert "commits" not in missing["diff"]["commit"]
+    assert any(e.startswith("commits:") for e in missing["errors"])
