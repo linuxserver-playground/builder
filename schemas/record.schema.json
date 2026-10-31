@@ -36,7 +36,19 @@
       "description": "The diff against the previous release of the branch: packages per architecture by ecosystem, config, base, sizes, the Dockerfile as a unified diff, and the classification of why the image changed.",
       "required": ["image", "branch", "tag", "previous_tag", "classification", "reasons", "totals"],
       "properties": {
-        "classification": { "enum": ["initial", "upstream", "linuxserver", "base", "packages", "mixed", "none"] }
+        "classification": { "enum": ["initial", "upstream", "linuxserver", "base", "packages", "mixed", "none"] },
+        "commit": {
+          "type": "object",
+          "description": "The repository commit of the previous release and this one, with GitHub's compare page when they differ (contracts 1.14).",
+          "required": ["from", "to", "changed"],
+          "properties": {
+            "from": { "type": ["string", "null"] },
+            "to": { "type": ["string", "null"] },
+            "changed": { "type": "boolean" },
+            "compare_url": { "type": ["string", "null"], "format": "uri" }
+          }
+        },
+        "trigger": { "type": ["string", "null"], "description": "build.json's `reason`: why this build ran (contracts 1.14)." }
       }
     },
     "vulns": {
