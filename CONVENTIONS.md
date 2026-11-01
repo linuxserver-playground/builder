@@ -265,7 +265,9 @@ Nothing is committed for it. The shared workflow assembles the site from the rep
 into an empty directory and deploys it as a workflow artifact: in the publish job of every live release, right
 after the Release and before the `build.summary` event (§10), and on its own when the build runs with
 `reason: pages` (filling or repairing a site). Each deploy
-is complete by itself, so a lost one is repaired by the next. The Releases stay the archive of everything.
+is complete by itself, so a lost one is repaired by the next. A deploy replaces the whole site, so after each one
+the workflow compares the site with the Releases and deploys again when another branch's release landed meanwhile. The
+Releases stay the archive of everything.
 
 Each build's folder also carries copies of its per-build documents as the hub's API serves them, without the API's
 envelope: `build.json` (the Release asset as it is), `report.json`, `tests.json`, `diff.json`, `layers.<arch>.json`
