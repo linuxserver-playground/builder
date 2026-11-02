@@ -40,7 +40,6 @@ class Settings:
 
     org: str = "linuxserver-playground"
     registry: str = "ghcr.io"
-    control_url: str = "https://ci.thelamer.duckdns.org:8443"
     site_url: str = "https://linuxserver-playground.github.io/site"
     docs_url: str = "https://linuxserver-playground.github.io/site/docs"
     hub_url: str = "https://linuxserver-playground.github.io/hub"
@@ -370,9 +369,7 @@ def build_context(data: Json, settings: Settings | None = None) -> Json:
         "changelog": list(data.get("changelog", [])),
         "site_url": settings.site_url,
         "docs_page_url": f"{settings.site_url}/images/{name}/",
-        "control_url": settings.control_url,
-        "ci_badge_url": f"{settings.control_url}/badge/{name}/{tag}.svg",
-        "ci_page_url": f"{settings.control_url}/images/{name}/{tag}",
+        "builds_page_url": f"{settings.site_url}/images/{name}/#builds",
         "hub_url": settings.hub_url,
         "mods_url": f"{settings.site_url}/mods/?image={name}",
         "universal_mods_url": f"{settings.site_url}/mods/?image=universal",

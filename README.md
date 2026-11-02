@@ -40,8 +40,8 @@ file, the field (a JSON path into `image.yml`) and the line when it knows it.
 | `builder record OUT_DIR [--previous DIR] [--no-scan] [--no-base]` | Writes `OUT_DIR/record.json` from a build's bundle files (CONVENTIONS §6): package tables, the diff against the previous release in `--previous` (its `build.json` and `record.json` or syft documents), grype's scan of each architecture and the base image's layer digests. Runs in the shared workflow's publish job; the hub imports the same code from `builder.derive`. |
 
 The links baked into the generated files come from `builder.manifest.Settings`; each field can be overridden
-with an environment variable (`BUILDER_CONTROL_URL`, `BUILDER_SITE_URL`, `BUILDER_DOCS_URL`, `BUILDER_HUB_URL`, `BUILDER_ORG`,
-`BUILDER_REGISTRY`). The CI badge is served by the control plane at `{control_url}/badge/{name}/{tag}.svg`.
+with an environment variable (`BUILDER_SITE_URL`, `BUILDER_DOCS_URL`, `BUILDER_HUB_URL`, `BUILDER_ORG`,
+`BUILDER_REGISTRY`). The Builds badge links to the image's builds on the website.
 
 ### As a container
 

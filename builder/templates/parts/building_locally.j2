@@ -19,4 +19,4 @@ docker run --rm --privileged ghcr.io/{{ settings.upstream_org }}/qemu-static --r
 
 Once registered you can define the dockerfile to use with `-f Dockerfile.aarch64`.
 
-Every push builds and tests the image with the shared workflow in [`{{ org }}/workflows`](https://github.com/{{ org }}/workflows); the results for this tag are shown on the [CI status page]({{ ci_page_url }}).
+Every push builds and tests the image with the shared workflow in [`{{ org }}/workflows`](https://github.com/{{ org }}/workflows); every build's tests, screenshots and package changes are on [the image's builds]({{ builds_page_url }}) on the website.

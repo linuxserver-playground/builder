@@ -71,16 +71,16 @@ def test_readme_has_the_expected_sections_in_order() -> None:
 
 def test_badges_point_at_the_new_world() -> None:
     readme = render_all(_sonarr(), SETTINGS)["README.md"]
-    assert "https://ci.thelamer.duckdns.org:8443/badge/sonarr/latest.svg" in readme
+    assert "https://linuxserver-playground.github.io/site/images/sonarr/#builds" in readme
     assert "https://linuxserver-playground.github.io/site/mods/?image=sonarr" in readme
     assert "https://github.com/linuxserver-playground/docker-sonarr/releases" in readme
     assert "ghcr.io/linuxserver-playground/sonarr:latest" in readme
 
 
-def test_control_url_is_configurable() -> None:
-    settings = Settings.from_env({"BUILDER_CONTROL_URL": "https://control.example"})
+def test_site_url_is_configurable() -> None:
+    settings = Settings.from_env({"BUILDER_SITE_URL": "https://site.example"})
     readme = render_all(_sonarr(), settings)["README.md"]
-    assert "https://control.example/badge/sonarr/latest.svg" in readme
+    assert "https://site.example/images/sonarr/#builds" in readme
 
 
 def test_docs_page_front_matter() -> None:

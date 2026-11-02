@@ -117,7 +117,7 @@
       "amd64": true,
       "arm64": true
     },
-    "report_url": "https://ci.thelamer.duckdns.org:8443/builds/linuxserver-playground/docker-sonarr/40131556248"
+    "report_url": "https://control.example/builds/linuxserver-playground/docker-sonarr/40131556248"
   },
   "assets": [
     {
