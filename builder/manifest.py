@@ -48,6 +48,8 @@ class Settings:
     """The org that holds the shared workflows, builder and docker-mods, which every image uses whatever its own org."""
     registry: str = "ghcr.io"
     site_url: str = "https://linuxserver-playground.github.io/site"
+    main_site_url: str = "https://linuxserver-playground.github.io/site"
+    """The main site, which holds the mods every image can use whatever site its own pages are on (Labs has its own)."""
     docs_url: str = "https://linuxserver-playground.github.io/site/docs"
     hub_url: str = "https://linuxserver-playground.github.io/hub"
     blog_url: str = "https://blog.linuxserver.io"
@@ -389,8 +391,8 @@ def build_context(data: Json, settings: Settings | None = None) -> Json:
         "docs_page_url": f"{settings.site_url}/images/{name}/",
         "builds_page_url": f"{settings.site_url}/images/{name}/#builds",
         "hub_url": settings.hub_url,
-        "mods_url": f"{settings.site_url}/mods/?image={name}",
-        "universal_mods_url": f"{settings.site_url}/mods/?image=universal",
+        "mods_url": f"{settings.main_site_url}/mods/?image={name}",
+        "universal_mods_url": f"{settings.main_site_url}/mods/?image=universal",
         "blog_url": settings.blog_url,
         "docs_url": settings.docs_url,
         "schema_url": settings.schema_url,

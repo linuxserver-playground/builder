@@ -254,4 +254,6 @@ def test_labs_images_open_with_the_labs_notice() -> None:
     assert "ghcr.io/linuxserver-playground/builder:latest" in files["AGENTS.md"]
     # Secrets by name: `inherit` passes nothing to a workflow in another organisation.
     assert "CONTROL_URL: ${{ secrets.CONTROL_URL }}" in files[".github/workflows/build.yml"]
+    # Mods are the main org's: their links stay on the main site.
+    assert "https://linuxserver-playground.github.io/site/mods/?image=sonarr" in readme
     assert "secrets: inherit" not in files[".github/workflows/build.yml"] + files[".github/workflows/pr-report.yml"]
