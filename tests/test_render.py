@@ -242,3 +242,13 @@ def test_labs_images_open_with_the_labs_notice() -> None:
     assert "has not been security reviewed" in readme and "(https://site.example/labs/)" in readme
     assert "!!! warning\n\n    **This is a LinuxServer Labs image." in files[f"{OUT_DIR}/docs.md"]
     assert "LinuxServer Labs" not in render_all(_sonarr(), SETTINGS)["README.md"]
+    # The shared pipeline stays in the main org.
+    assert (
+        "uses: linuxserver-playground/workflows/.github/workflows/image-build.yml@v1"
+        in files[".github/workflows/build.yml"]
+    )
+    assert (
+        "uses: linuxserver-playground/workflows/.github/workflows/pr-report.yml@v1"
+        in files[".github/workflows/pr-report.yml"]
+    )
+    assert "ghcr.io/linuxserver-playground/builder:latest" in files["AGENTS.md"]

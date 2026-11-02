@@ -44,6 +44,8 @@ class Settings:
     """Where the generated files point. Every value can be overridden with a ``BUILDER_*`` environment variable."""
 
     org: str = "linuxserver-playground"
+    pipeline_org: str = "linuxserver-playground"
+    """The org that holds the shared workflows, builder and docker-mods, which every image uses whatever its own org."""
     registry: str = "ghcr.io"
     site_url: str = "https://linuxserver-playground.github.io/site"
     docs_url: str = "https://linuxserver-playground.github.io/site/docs"
@@ -383,6 +385,7 @@ def build_context(data: Json, settings: Settings | None = None) -> Json:
         "changelog": list(data.get("changelog", [])),
         "site_url": settings.site_url,
         "labs": settings.labs,
+        "pipeline_org": settings.pipeline_org,
         "docs_page_url": f"{settings.site_url}/images/{name}/",
         "builds_page_url": f"{settings.site_url}/images/{name}/#builds",
         "hub_url": settings.hub_url,
