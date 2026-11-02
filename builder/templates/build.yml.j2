@@ -37,4 +37,9 @@ jobs:
     with:
       reason: ${{ '{{' }} github.event.inputs.reason || github.event.client_payload.reason || 'push' {{ '}}' }}
       workflows_ref: v1
-    secrets: inherit
+    # Named, not `inherit`: GitHub passes inherited secrets only to a workflow in the same organisation, and the
+    # shared workflows may live in another (a Labs image calls the main org's).
+    secrets:
+      CONTROL_URL: ${{ '{{' }} secrets.CONTROL_URL {{ '}}' }}
+      CONTROL_EVENTS_SECRET: ${{ '{{' }} secrets.CONTROL_EVENTS_SECRET {{ '}}' }}
+      ATTACHMENTS_TOKEN: ${{ '{{' }} secrets.ATTACHMENTS_TOKEN {{ '}}' }}

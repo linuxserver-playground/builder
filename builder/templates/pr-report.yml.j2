@@ -25,4 +25,7 @@ jobs:
       packages: write
     with:
       workflows_ref: v1
-    secrets: inherit
+    # Named, not `inherit`: GitHub passes inherited secrets only to a workflow in the same organisation.
+    secrets:
+      ATTACHMENTS_TOKEN: ${{ '{{' }} secrets.ATTACHMENTS_TOKEN {{ '}}' }}
+      PACKAGES_TOKEN: ${{ '{{' }} secrets.PACKAGES_TOKEN {{ '}}' }}
