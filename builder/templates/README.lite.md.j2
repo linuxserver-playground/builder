@@ -1,4 +1,8 @@
 {% set flavour = "gfm" %}
+{% if labs %}
+{% include "parts/labs.j2" %}
+
+{% endif %}
 {% if deprecation.status %}
 {% include "parts/deprecation.j2" %}
 

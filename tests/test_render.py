@@ -224,3 +224,21 @@ def test_org_follows_the_repository_and_empty_overrides_are_ignored() -> None:
     assert "ghcr.io/linuxserverlabs-playground/sonarr:latest" in readme
     assert "https://linuxserver-playground.github.io/site/labs/images/sonarr/#builds" in readme
     assert Settings.from_env({"GITHUB_REPOSITORY": "a/b", "BUILDER_ORG": "c"}).org == "c"
+
+
+def test_labs_images_open_with_the_labs_notice() -> None:
+    labs = Settings.from_env(
+        {
+            "GITHUB_REPOSITORY": "linuxserverlabs-playground/docker-sonarr",
+            "BUILDER_SITE_URL": "https://site.example/labs",
+        }
+    )
+    files = render_all(_sonarr(), labs)
+    readme = files["README.md"]
+    head = readme.split("\n", 1)[1]
+    assert head.startswith(
+        "> [!WARNING]\n> **This is a LinuxServer Labs image. It is not part of the main LinuxServer.io fleet.**"
+    )
+    assert "has not been security reviewed" in readme and "(https://site.example/labs/)" in readme
+    assert "!!! warning\n\n    **This is a LinuxServer Labs image." in files[f"{OUT_DIR}/docs.md"]
+    assert "LinuxServer Labs" not in render_all(_sonarr(), SETTINGS)["README.md"]

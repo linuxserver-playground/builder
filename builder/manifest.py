@@ -34,6 +34,11 @@ ARCH_TAGS = {"amd64": "amd64", "arm64": "arm64v8"}
 ARCH_LABELS = {"amd64": "x86-64", "arm64": "arm64"}
 
 
+LABS_ORGS = ("linuxserverlabs-playground", "linuxserverlabs")
+"""LinuxServer Labs (workspace docs/labs.md): images of less proven software, outside the main fleet. Their
+generated files open with a notice saying so."""
+
+
 @dataclass(frozen=True)
 class Settings:
     """Where the generated files point. Every value can be overridden with a ``BUILDER_*`` environment variable."""
@@ -46,6 +51,10 @@ class Settings:
     blog_url: str = "https://blog.linuxserver.io"
     upstream_org: str = "linuxserver"
     schema_url: str = "https://github.com/linuxserver-playground/builder/blob/main/schemas/image.schema.json"
+
+    @property
+    def labs(self) -> bool:
+        return self.org in LABS_ORGS
 
     @classmethod
     def from_env(cls, environ: dict[str, str] | None = None) -> Settings:
@@ -373,6 +382,7 @@ def build_context(data: Json, settings: Settings | None = None) -> Json:
         "deprecation": {"status": False, "message": "", **data.get("deprecation", {})},
         "changelog": list(data.get("changelog", [])),
         "site_url": settings.site_url,
+        "labs": settings.labs,
         "docs_page_url": f"{settings.site_url}/images/{name}/",
         "builds_page_url": f"{settings.site_url}/images/{name}/#builds",
         "hub_url": settings.hub_url,

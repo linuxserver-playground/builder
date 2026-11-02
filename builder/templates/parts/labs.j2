@@ -1,0 +1,6 @@
+{% set labs_text %}
+**This is a LinuxServer Labs image. It is not part of the main LinuxServer.io fleet.**
+
+Labs publishes newer, less proven software before it can earn a place in the main fleet. The LinuxServer team reviews every change to this repository and builds it with the same pipeline and base images as the fleet, but the application itself has not been security reviewed: its code, its releases and the files this image downloads from them are used as upstream publishes them. Treat it as you would any unaudited software: understand what it does before you run it, and do not expose it to the internet without protecting it. [What Labs is]({{ site_url }}/).
+{% endset %}
+{{ labs_text | admonition(flavour, "warning") }}

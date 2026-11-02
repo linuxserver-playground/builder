@@ -8,6 +8,10 @@ tags:
 description: {{ summary_oneline | noter(flavour) | yaml_string }}
 ---
 {% include "parts/do_not_edit.j2" %}
+{% if labs %}
+{% include "parts/labs.j2" %}
+
+{% endif %}
 {% if custom_readme %}
 {{ custom_readme | trim }}
 {% else %}
