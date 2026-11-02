@@ -208,3 +208,19 @@ def test_without_sponsors_donate_txt_is_not_rendered() -> None:
     files = render_all(data, SETTINGS)
     assert "root/donate.txt" not in files
     assert "custom:" not in files[".github/FUNDING.yml"]
+
+
+def test_org_follows_the_repository_and_empty_overrides_are_ignored() -> None:
+    settings = Settings.from_env(
+        {
+            "GITHUB_REPOSITORY": "linuxserverlabs-playground/docker-sonarr",
+            "BUILDER_SITE_URL": "https://linuxserver-playground.github.io/site/labs",
+            "BUILDER_HUB_URL": "",
+        }
+    )
+    assert settings.org == "linuxserverlabs-playground"
+    assert settings.hub_url == Settings().hub_url
+    readme = render_all(_sonarr(), settings)["README.md"]
+    assert "ghcr.io/linuxserverlabs-playground/sonarr:latest" in readme
+    assert "https://linuxserver-playground.github.io/site/labs/images/sonarr/#builds" in readme
+    assert Settings.from_env({"GITHUB_REPOSITORY": "a/b", "BUILDER_ORG": "c"}).org == "c"

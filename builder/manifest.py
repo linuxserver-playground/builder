@@ -49,12 +49,17 @@ class Settings:
 
     @classmethod
     def from_env(cls, environ: dict[str, str] | None = None) -> Settings:
+        """``BUILDER_*`` overrides (an empty one is ignored, so an unset Actions variable keeps the default). Without
+        ``BUILDER_ORG`` the org is the owner of ``GITHUB_REPOSITORY``, so a repository in another organisation (Labs)
+        renders its own namespace."""
         env = os.environ if environ is None else environ
         overrides = {
             name: env[f"BUILDER_{name.upper()}"]
             for name in cls.__dataclass_fields__
-            if f"BUILDER_{name.upper()}" in env
+            if env.get(f"BUILDER_{name.upper()}")
         }
+        if "org" not in overrides and "/" in env.get("GITHUB_REPOSITORY", ""):
+            overrides["org"] = env["GITHUB_REPOSITORY"].split("/", 1)[0]
         return cls(**overrides)
 
 
