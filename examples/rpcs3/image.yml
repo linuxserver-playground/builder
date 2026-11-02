@@ -2,6 +2,8 @@
 schema: 1
 name: rpcs3
 
+maintainers:
+- thelamer
 summary: |-
   [RPCS3](https://rpcs3.net/) is a multi-platform open-source Sony PlayStation 3 emulator and debugger written in C++ for Windows, Linux, macOS and FreeBSD.
 

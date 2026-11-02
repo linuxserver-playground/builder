@@ -5,6 +5,10 @@
 # [{{ org }}/{{ name }}]({{ repo_url }})
 
 {% include "parts/project_badges.j2" %}
+{% if maintainers %}
+
+{% include "parts/maintainers.j2" %}
+{% endif %}
 
 {{ summary | noter(flavour) | trim }}
 {% if extras %}

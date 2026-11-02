@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import stat
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 
 from builder.check import Finding, check_repo
 from builder.cli import main
+from builder.manifest import Settings, read_manifest_data
+from builder.render import render_all, write_files
 
 from .conftest import SETTINGS, make_repo
 
@@ -193,3 +196,91 @@ def test_stale_donate_txt_fails_and_render_removes_it(sonarr_repo: Path) -> None
     assert main(["render", str(sonarr_repo)]) == 0
     assert not (sonarr_repo / "root" / "donate.txt").exists()
     assert check_repo(sonarr_repo, SETTINGS) == []
+
+
+LABS = Settings.from_env({"GITHUB_REPOSITORY": "linuxserverlabs-playground/docker-rpcs3"})
+
+
+def _labs_repo(tmp_path: Path, edit: Callable[[str], str] = lambda text: text) -> Path:
+    """The rpcs3 example as a Labs repository: on the playground's selkies base, rendered for the Labs org."""
+    repo = make_repo(tmp_path / "docker-rpcs3", "rpcs3", rendered=False)
+    manifest = repo / "image.yml"
+    manifest.write_text(edit(manifest.read_text(encoding="utf-8")), encoding="utf-8")
+    for name, tag in (("Dockerfile", "ubunturesolute"), ("Dockerfile.aarch64", "arm64v8-ubunturesolute")):
+        dockerfile = repo / name
+        body = dockerfile.read_text(encoding="utf-8").split("\n", 1)[1]
+        stages = "FROM ghcr.io/linuxserver-playground/unrar:latest AS unrar\n\n"
+        dockerfile.write_text(
+            f"{stages}FROM ghcr.io/linuxserver-playground/baseimage-selkies:{tag}\n{body}", encoding="utf-8"
+        )
+    write_files(repo, render_all(read_manifest_data(manifest), LABS))
+    return repo
+
+
+def test_labs_profile_passes_a_conforming_repo(tmp_path: Path) -> None:
+    repo = _labs_repo(tmp_path)
+    assert LABS.labs and errors(check_repo(repo, LABS)) == []
+
+
+def test_labs_profile_needs_maintainers(tmp_path: Path) -> None:
+    repo = _labs_repo(tmp_path, lambda text: text.replace("maintainers:\n- thelamer\n", ""))
+    found = errors(check_repo(repo, LABS))
+    assert len(found) == 1 and "maintainers: Labs images name their maintainers" in found[0]
+    # The main org leaves it optional.
+    assert errors(check_repo(make_repo(tmp_path / "main", "rpcs3"), SETTINGS)) == []
+    # An empty list fails the schema before the profile runs, in either org.
+    repo = _labs_repo(tmp_path / "empty", lambda text: text.replace("maintainers:\n- thelamer\n", "maintainers: []\n"))
+    assert any("maintainers" in e for e in errors(check_repo(repo, LABS)))
+
+
+def test_labs_profile_takes_applications_only(tmp_path: Path) -> None:
+    repo = _labs_repo(tmp_path, lambda text: text.replace("name: rpcs3\n", "name: rpcs3\nkind: tool\n"))
+    found = errors(check_repo(repo, LABS))
+    assert len(found) == 1 and "kind: Labs takes applications only, not kind: tool" in found[0]
+
+
+def test_labs_profile_needs_require_assets_on_a_release_source(tmp_path: Path) -> None:
+    def drop_assets(text: str) -> str:
+        start = text.index("    require_assets:\n")
+        return text[:start] + text[text.index("  notes:\n") :]
+
+    repo = _labs_repo(tmp_path, drop_assets)
+    found = errors(check_repo(repo, LABS))
+    assert len(found) == 1 and "upstream.version.require_assets: name what the Dockerfiles download" in found[0]
+    assert errors(check_repo(make_repo(tmp_path / "main", "rpcs3"), SETTINGS)) == []
+
+
+def test_labs_profile_needs_a_typed_stable_source(tmp_path: Path) -> None:
+    repo = _labs_repo(
+        tmp_path,
+        lambda text: text.replace(
+            "    repo: RPCS3/rpcs3-binaries-linux\n    require",
+            "    repo: RPCS3/rpcs3-binaries-linux\n    prerelease: true\n    require",
+            1,
+        ),
+    )
+    found = errors(check_repo(repo, LABS))
+    assert len(found) == 1 and "upstream.version.prerelease: Labs images follow stable releases only" in found[0]
+
+    def command(text: str) -> str:
+        start = text.index("  version:\n")
+        source = "  version:\n    type: command\n    run: echo 1.0\n"
+        return text[:start] + source + text[text.index("  notes:\n") :]
+
+    found = errors(check_repo(_labs_repo(tmp_path / "command", command), LABS))
+    assert len(found) == 1 and "upstream.version.type: Labs images follow stable releases" in found[0]
+
+
+def test_labs_profile_builds_on_the_playground_base_images(tmp_path: Path) -> None:
+    repo = _labs_repo(tmp_path)
+    dockerfile = repo / "Dockerfile"
+    text = dockerfile.read_text(encoding="utf-8")
+    dockerfile.write_text(
+        text.replace("FROM ghcr.io/linuxserver-playground/baseimage-selkies:ubunturesolute", "FROM ubuntu:24.04"),
+        encoding="utf-8",
+    )
+    found = errors(check_repo(repo, LABS))
+    assert found == [
+        "Dockerfile: FROM: Labs images build on the playground's base images "
+        "(ghcr.io/linuxserver-playground/baseimage-*), not 'ubuntu:24.04' (line 3)"
+    ]

@@ -257,3 +257,29 @@ def test_labs_images_open_with_the_labs_notice() -> None:
     # Mods are the main org's: their links stay on the main site.
     assert "https://linuxserver-playground.github.io/site/mods/?image=sonarr" in readme
     assert "secrets: inherit" not in files[".github/workflows/build.yml"] + files[".github/workflows/pr-report.yml"]
+
+
+def _labs_settings() -> Settings:
+    return Settings.from_env({"GITHUB_REPOSITORY": "linuxserverlabs-playground/docker-rpcs3"})
+
+
+@pytest.mark.parametrize("labs", [False, True])
+def test_maintainers_are_credited_in_every_generated_document(labs: bool) -> None:
+    settings = _labs_settings() if labs else SETTINGS
+    data = read_manifest_data(EXAMPLES / "rpcs3" / "image.yml")
+    data["maintainers"] = ["thelamer", "aptalca"]
+    files = render_all(data, settings)
+    line = "Maintained by [thelamer](https://github.com/thelamer) and [aptalca](https://github.com/aptalca)."
+    for rendered in ("README.md", f"{OUT_DIR}/docs.md", f"{OUT_DIR}/README.lite.md", "AGENTS.md"):
+        assert line in files[rendered], rendered
+    readme = files["README.md"]
+    # Right under the project badges, before the summary.
+    assert readme.index("message=Builds") < readme.index(line) < readme.index("[RPCS3](https://rpcs3.net/)")
+    assert "that gives no access" in files["AGENTS.md"]
+    data["maintainers"] = ["thelamer"]
+    assert "Maintained by [thelamer](https://github.com/thelamer).\n" in render_all(data, settings)["README.md"]
+
+
+def test_without_maintainers_nothing_is_credited() -> None:
+    files = render_all(_sonarr(), SETTINGS)
+    assert not any("Maintained by" in text for text in files.values() if text)

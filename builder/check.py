@@ -74,6 +74,8 @@ def check_repo(repo_dir: Path, settings: Settings | None = None, drift_level: st
     findings.extend(check_changelog(manifest))
     findings.extend(check_branch(repo_dir, manifest))
     findings.extend(check_credentials(repo_dir))
+    if settings.labs:
+        findings.extend(check_labs(repo_dir, manifest, settings))
     return findings
 
 
@@ -165,6 +167,64 @@ def check_require_assets(manifest: Manifest) -> list[Finding]:
             re.compile(str(entry["asset"]).replace("${VERSION}", "V").replace("$VERSION", "V"))
         except re.error as exc:
             findings.append(_error(str(manifest.path), field, f"not a valid regex: {exc}", line))
+    return findings
+
+
+def check_labs(repo_dir: Path, manifest: Manifest, settings: Settings) -> list[Finding]:
+    """The Labs profile (workspace docs/labs.md, "The bar"): what of the bar a repository can show offline. Labs takes
+    less proven software, so the rules the main fleet leaves to review are errors here."""
+    data = manifest.data
+    path = str(manifest.path)
+    findings: list[Finding] = []
+    if not data.get("maintainers"):
+        findings.append(
+            _error(path, "maintainers", "Labs images name their maintainers (GitHub logins)", manifest.line_of(()))
+        )
+    kind = data.get("kind", "app")
+    if kind != "app":
+        findings.append(
+            _error(path, "kind", f"Labs takes applications only, not kind: {kind}", manifest.line_of(("kind",)))
+        )
+    source = data["upstream"].get("version", {})
+    source_type = source.get("type")
+    version_line = manifest.line_of(("upstream", "version", "type"))
+    if source_type == "command":
+        message = "Labs images follow stable releases through a typed version source, not a command"
+        findings.append(_error(path, "upstream.version.type", message, version_line))
+    if source.get("prerelease"):
+        line = manifest.line_of(("upstream", "version", "prerelease"))
+        findings.append(_error(path, "upstream.version.prerelease", "Labs images follow stable releases only", line))
+    if source_type in RELEASE_SOURCES and not source.get("require_assets"):
+        message = "name what the Dockerfiles download from the release (an asset pattern, or the source archive URL)"
+        findings.append(_error(path, "upstream.version.require_assets", message, version_line))
+    findings.extend(check_labs_base(repo_dir, manifest, settings))
+    return findings
+
+
+def check_labs_base(repo_dir: Path, manifest: Manifest, settings: Settings) -> list[Finding]:
+    """The image's own stage (the last FROM) starts from one of the playground's base images."""
+    dockerfiles = manifest.data["build"].get("dockerfiles", {})
+    defaults = {"amd64": "Dockerfile", "arm64": "Dockerfile.aarch64"}
+    prefix = f"ghcr.io/{settings.pipeline_org}/baseimage-"
+    findings: list[Finding] = []
+    for arch in manifest.data["build"]["platforms"]:
+        rel = dockerfiles.get(arch, defaults[arch])
+        file = repo_dir / rel
+        if not file.is_file():
+            continue  # check_dockerfiles reports it
+        froms = [
+            (number, line.split()[1:])
+            for number, line in enumerate(file.read_text(encoding="utf-8").splitlines(), 1)
+            if line.startswith("FROM ")
+        ]
+        if not froms:
+            continue
+        number, words = froms[-1]
+        words = [w for w in words if not w.startswith("--")]
+        if not words or not words[0].startswith(prefix):
+            found = words[0] if words else ""
+            message = f"Labs images build on the playground's base images ({prefix}*), not {found!r}"
+            findings.append(_error(rel, "FROM", message, number))
     return findings
 
 

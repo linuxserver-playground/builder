@@ -9,6 +9,12 @@ and your instincts disagree, this file wins. When it is silent, copy what the su
 This repository builds the `{{ name }}` container image, published as
 `ghcr.io/{{ org }}/{{ name }}`. It is one of many LinuxServer.io images built from one shared pipeline, so a
 change that looks like an improvement in isolation is often wrong here.
+{% if maintainers %}
+
+{% include "parts/maintainers.j2" %}
+They are credited and mentioned when the image needs attention; that gives no access. The LinuxServer team
+reviews and merges every change.
+{% endif %}
 
 ## Decide where the change belongs
 

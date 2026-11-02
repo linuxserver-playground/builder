@@ -84,6 +84,32 @@ upstream-compatible image list and the install artefacts (Kubernetes, quadlets, 
 requires `kind: base` exactly on the `baseimage-*` names; `builder migrate` derives both kinds from the name and
 the legacy `Internal` category.
 
+### Maintainers
+
+`image.yml` `maintainers` is optional: the GitHub logins (no `@`) of the people who look after the image. The
+README, the docs page and the generated AGENTS.md credit them ("Maintained by", linked to their profiles), the
+hub serves them as `maintainers` in the image detail (an empty list when absent) and the site shows them in the
+image page header. It is credit and who gets mentioned when the image needs attention, never access: merges stay
+with the team.
+
+### Labs
+
+LinuxServer Labs images live in their own organisation (`linuxserverlabs-playground`, in production
+`linuxserverlabs`) on the same pipeline. `builder` takes the org from the owner of `GITHUB_REPOSITORY`; in a Labs org
+the generated files open with the Labs notice and `builder check` adds the Labs profile, the part of the Labs bar a
+repository can show offline. Each is an error:
+
+- `maintainers` is set (the schema already refuses an empty list);
+- `kind` is `app`, the default;
+- `upstream.version` is a typed source, not `command`, and not `prerelease: true`;
+- a release source (`github_release`, `codeberg_release`, `gitea_release`) has a non-empty `require_assets`
+  naming what the Dockerfiles download: asset patterns, or the source archive's URL template for an image built
+  from the release's source;
+- each Dockerfile's last stage starts `FROM ghcr.io/linuxserver-playground/baseimage-*` (the pipeline's org).
+
+The rest of the bar (an organisation-owned upstream, the licence, stable asset names, no companion containers) is
+checked against the live upstream by the proposals repository's workflow and by the member who tries the image.
+
 ## 3. Versions and tags
 
 A release is identified by `<upstream>-ls<N>`:

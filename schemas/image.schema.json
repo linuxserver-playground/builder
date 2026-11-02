@@ -23,6 +23,12 @@
       "minLength": 10,
       "description": "One paragraph of Markdown describing the application. Rendered in README, docs, stores and the API."
     },
+    "maintainers": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$", "description": "GitHub login, without the @." },
+      "description": "Who maintains the image: GitHub logins, credited in the README and on the site and mentioned when the image needs attention. Credit, never access. Required for LinuxServer Labs images (builder check's Labs profile)."
+    },
     "kind": {
       "enum": ["app", "base", "tool"],
       "default": "app",

@@ -40,6 +40,15 @@ def test_unknown_top_level_key_is_rejected() -> None:
     assert "jenkins_vars" in str(excinfo.value)
 
 
+def test_maintainers_are_github_logins() -> None:
+    data = _sonarr()
+    data["maintainers"] = ["thelamer", "a-b-1"]
+    validate("image", data)
+    for bad in ([], ["@thelamer"], ["-leading"], ["x" * 40], ["two words"]):
+        data["maintainers"] = bad
+        assert errors("image", data), bad
+
+
 def test_version_source_requires_type_specific_fields() -> None:
     data = _sonarr()
     data["upstream"]["version"] = {"type": "github_release"}

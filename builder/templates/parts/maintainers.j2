@@ -1,0 +1,5 @@
+{% set links = [] %}
+{% for login in maintainers %}
+{% set _ = links.append("[" ~ login ~ "](https://github.com/" ~ login ~ ")") %}
+{% endfor %}
+Maintained by {% if links | length > 1 %}{{ links[:-1] | join(", ") }} and {{ links[-1] }}{% else %}{{ links[0] }}{% endif %}.
