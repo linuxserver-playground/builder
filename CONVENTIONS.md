@@ -117,7 +117,9 @@ A release is identified by `<upstream>-ls<N>`:
 - `<upstream>` is the upstream version as resolved by `upstream.version` in the manifest, after
   `transform`s, with the characters `~ , % @ + ; : /` and spaces removed.
 - `N` is the LinuxServer build number for this branch. It starts at 1 and increments on every release
-  of the branch. It is read from the branch's latest GitHub Release tag, never from a registry.
+  of the branch. It is read from the branch's latest GitHub Release tag, never from a registry. A build
+  republishes the latest release's tag only when it rebuilds that release's commit for the same `<upstream>`;
+  any other `<upstream>`, newer or older, is a new release with the next `N`.
 - Images whose `upstream.version.type` is `os` use the first 8 hex characters of the md5 of
   `package_versions.txt` as `<upstream>`, as today.
 - `semver` is derived from `<upstream>` when it contains `MAJOR.MINOR.PATCH`; `MAJOR.MINOR` gets the
